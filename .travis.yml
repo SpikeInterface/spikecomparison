@@ -15,6 +15,7 @@ addons:
     - packagekit-gtk3-module
     - libcanberra-gtk-module
 install:
+  - pip install requests
   - pip install https://github.com/SpikeInterface/spikeextractors/archive/master.zip
   - pip install https://github.com/SpikeInterface/spikesorters/archive/master.zip
   - pip install https://github.com/SpikeInterface/spiketoolkit/archive/master.zip
