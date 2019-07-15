@@ -105,7 +105,4 @@ class BaseComparison:
             self._do_confusion_matrix()
         return self._confusion_matrix, self._st1_idxs, self._st2_idxs
 
-    def plot_confusion_matrix(self, xlabel=None, ylabel=None, ax=None, count_text=True):
-        from spikewidgets import plot_confusion_matrix
-        plot_confusion_matrix(self, [self.sorting1_name, self.sorting2_name], ax=ax, count_text=count_text)
 
