@@ -27,6 +27,7 @@ install:
 script: python -m pytest
 deploy:
   provider: pypi
+  twine_version: 1.12.1
   user: alejoe91
   on:
     tags: true
