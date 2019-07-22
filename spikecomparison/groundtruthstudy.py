@@ -48,9 +48,9 @@ class GroundTruthStudy:
         return cls(study_folder)
 
     def run_sorters(self, sorter_list, sorter_params={}, mode='keep',
-                    engine='loop', engine_kargs={}, debug=False):
+                    engine='loop', engine_kargs={}, verbose=False):
         run_study_sorters(self.study_folder, sorter_list, sorter_params=sorter_params,
-                          engine=engine, engine_kargs=engine_kargs, debug=debug)
+                          engine=engine, engine_kargs=engine_kargs, verbose=verbose)
 
     def get_ground_truth(self, rec_name=None):
         if not self._is_scanned:
