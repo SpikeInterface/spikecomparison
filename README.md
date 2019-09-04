@@ -2,7 +2,7 @@
 
 # SpikeComparison
 
-SpikeComparison is a package of the SpikeInterface project that was designed to compare the output of spike sorting algorithms, with and without ground truth.
+SpikeComparison is a package of the SpikeInterface project that was designed to compare and benchmark the output of spike sorting algorithms with and without ground truth.
 
 ## Getting Started
 
