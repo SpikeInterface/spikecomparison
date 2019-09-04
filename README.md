@@ -22,7 +22,6 @@ You can also install SpikeComparison locally by cloning the repo into your code 
 
 ```shell
 git clone https://github.com/SpikeInterface/spikecomparison.git
-
 cd spikecomparison
 python setup.py install
 ```
@@ -45,4 +44,4 @@ The documentation page for the SpikeInterface project can be found here: https:/
 
 <br/>
 <br/>
-For any correspondence, contact Alessio Buccino at alessiop.buccino@gmail.com
+For any correspondence, contact Samuel Garcia samuel.garcia@cnrs.fr
