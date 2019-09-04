@@ -1,7 +1,5 @@
 [![Build Status](https://travis-ci.org/SpikeInterface/spikecomparison.svg?branch=master)](https://travis-ci.org/SpikeInterface/spikecomparison) [![PyPI version](https://badge.fury.io/py/spikecomparison.svg)](https://badge.fury.io/py/spikecomparison)
 
-Alpha Development
-
 # SpikeComparison
 
 SpikeComparison is a package of the SpikeInterface project that was designed to compare the output of spike sorting algorithms, with and without ground truth.
