@@ -57,8 +57,10 @@ class GroundTruthStudy:
             self.scan_folder()
         if len(self.rec_names) > 1 and rec_name is None:
             raise Exception("Pass 'rec_name' parameter to select which recording to use.")
-        else:
+        elif len(self.rec_names) == 1:
             rec_name = self.rec_names[0]
+        else:
+            rec_name = self.rec_names[self.rec_names.index(rec_name)]
         sorting = se.NpzSortingExtractor(self.study_folder / 'ground_truth' / (rec_name + '.npz'))
         return sorting
 
