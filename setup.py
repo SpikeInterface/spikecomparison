@@ -27,7 +27,6 @@ setup(
         'spikeextractors',
         'spiketoolkit',
         'spikesorters',
-        'spikewidgets',
     ],
     classifiers=(
         "Programming Language :: Python :: 3",
