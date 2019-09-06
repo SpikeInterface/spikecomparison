@@ -2,7 +2,7 @@ import numpy as np
 import spikeextractors as se
 
 from .basecomparison import BaseComparison
-from .comparisontools import compute_agreement_score
+from .comparisontools import compute_agreement_score, do_score_labels
 
 
 class SortingComparison(BaseComparison):
@@ -15,6 +15,13 @@ class SortingComparison(BaseComparison):
         BaseComparison.__init__(self, sorting1, sorting2, sorting1_name=sorting1_name, sorting2_name=sorting2_name,
                                 delta_time=delta_time, min_accuracy=min_accuracy, n_jobs=n_jobs, compute_labels=compute_labels,
                                 compute_misclassification=compute_misclassification, verbose=verbose)
+
+    def _do_score_labels(self):
+        if self._verbose:
+            print("Adding labels...")
+        self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
+                                                             self._delta_frames, self._unit_map12,
+                                                             self._compute_misclassification)
 
     def get_mapped_sorting1(self):
         """

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from .basecomparison import BaseComparison
-from .comparisontools import compute_agreement_score
+from .comparisontools import compute_agreement_score, do_score_labels
 
 
 # Note for dev,  because of  BaseComparison internally:
@@ -57,7 +57,7 @@ class GroundTruthComparison(BaseComparison):
             ## u2 = self._unit_map12[u1] 
             # now we use the best match wich is more natural for GT
             u2 = self._best_match_units_12[u1]
-
+            
             self.count.loc[u1, 'tp'] = np.sum(self._labels_st1[u1] == 'TP')
             self.count.loc[u1, 'cl'] = sum(e.startswith('CL') for e in self._labels_st1[u1])
             self.count.loc[u1, 'fn'] = np.sum(self._labels_st1[u1] == 'FN')
@@ -70,6 +70,20 @@ class GroundTruthComparison(BaseComparison):
             else:
                 self.count.loc[u1, 'fp'] = np.sum(self._labels_st2[u2] == 'FP')
                 self.count.loc[u1, 'num_tested'] = self._labels_st2[u2].size
+
+    def _do_score_labels(self):
+        if self._verbose:
+            print("Adding labels...")
+
+        ## this was the previous count based on hungarian match:
+        ## self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
+        ##                                                      self._delta_frames, self._unit_map12,
+        ##                                                      self._compute_misclassification)
+
+        self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
+                                                             self._delta_frames, self._best_match_units_12,
+                                                             self._compute_misclassification)
+
 
     def get_performance(self, method='by_unit', output='pandas'):
         """

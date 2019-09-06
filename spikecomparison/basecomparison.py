@@ -72,13 +72,6 @@ class BaseComparison:
         self._unit_map21 = do_matching(self.sorting1, self.sorting2, self._delta_frames, self._min_accuracy,
                                        self._n_jobs)
 
-    def _do_score_labels(self):
-        if self._verbose:
-            print("Adding labels...")
-        self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
-                                                             self._delta_frames, self._unit_map12,
-                                                             self._compute_misclassification)
-
     def _do_confusion_matrix(self):
         if self._verbose:
             print("Computing confusion matrix...")
