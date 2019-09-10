@@ -31,13 +31,13 @@ from .groundtruthcomparison import compare_sorter_to_ground_truth, _perf_keys
 def setup_comparison_study(study_folder, gt_dict):
     """
     Based on a dict of (recordnig, sorting) create the study folder.
-    
+
 
     Parameters
     ----------
     study_folder: str
         The study folder.
-    
+
     gt_dict : a dict of tuple (recording, sorting_gt)
         Dict of tuple that contain recording and sorting ground truth
     """
@@ -60,8 +60,8 @@ def setup_comparison_study(study_folder, gt_dict):
         chunksize = 2 ** 24 // num_chan
         sr = recording.get_sampling_frequency()
 
-        se.write_binary_dat_format(recording, raw_filename, time_axis=0, dtype='float32', chunksize=chunksize)
-        se.save_probe_file(recording, prb_filename, format='spyking_circus')
+        recording.write_to_binary_dat_format(raw_filename, time_axis=0, dtype='float32', chunksize=chunksize)
+        recording.save_to_probe_file(prb_filename, format='spyking_circus')
         with open(json_filename, 'w', encoding='utf8') as f:
             info = dict(sample_rate=sr, num_chan=num_chan, dtype='float32', frames_first=True)
             json.dump(info, f, indent=4)
@@ -79,15 +79,15 @@ def get_rec_names(study_folder):
     """
     Get list of keys of recordings.
     Read from the 'names.txt' file in stufy folder.
-    
+
     Parameters
     ----------
     study_folder: str
         The study folder.
-    
+
     Returns
     ----------
-    
+
     rec_names: list
         LIst of names.
     """
@@ -99,20 +99,20 @@ def get_rec_names(study_folder):
 def get_recordings(study_folder):
     """
     Get ground recording as a dict.
-    
+
     They are read from the 'raw_files' folder with binary format.
-    
+
     Parameters
     ----------
     study_folder: str
         The study folder.
-    
+
     Returns
     ----------
-    
+
     recording_dict: dict
         Dict of rexording.
-        
+
     """
     study_folder = Path(study_folder)
 
@@ -127,9 +127,9 @@ def get_recordings(study_folder):
 
         rec = se.BinDatRecordingExtractor(raw_filename, info['sample_rate'], info['num_chan'],
                                           info['dtype'], frames_first=info['frames_first'])
-        se.load_probe_file(rec, prb_filename)
+        rec_probe = rec.load_probe_file(prb_filename)
 
-        recording_dict[rec_name] = rec
+        recording_dict[rec_name] = rec_probe
 
     return recording_dict
 
@@ -137,20 +137,20 @@ def get_recordings(study_folder):
 def get_ground_truths(study_folder):
     """
     Get ground truth sorting extractor as a dict.
-    
+
     They are read from the 'ground_truth' folder with npz format.
-    
+
     Parameters
     ----------
     study_folder: str
         The study folder.
-    
+
     Returns
     ----------
-    
+
     ground_truths: dict
         Dict of sorintg_gt.
-    
+
     """
     study_folder = Path(study_folder)
     rec_names = get_rec_names(study_folder)
@@ -165,8 +165,8 @@ def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
                       engine='loop', engine_kargs={}, verbose=False):
     """
     Run all sorter on all recordings.
-    
-    
+
+
     Wrapper on top of st.sorter.run_sorters(...)
 
 
@@ -174,10 +174,10 @@ def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
     ----------
     study_folder: str
         The study folder.
-    
+
     sorter_params: dict of dict with sorter_name as key
         This allow to overwritte default params for sorter.
-    
+
     mode: 'raise_if_exists' or 'overwrite' or 'keep'
         The mode when the subfolder of recording/sorter already exists.
             * 'raise' : raise error if subfolder exists
@@ -186,13 +186,13 @@ def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
 
     engine: str
         'loop' or 'multiprocessing'
-    
+
     engine_kargs: dict
         This contains kargs specific to the launcher engine:
             * 'loop' : no kargs
             * 'multiprocessing' : {'processes' : } number of processes
-    
-    
+
+
     """
     study_folder = Path(study_folder)
     sorter_folders = study_folder / 'sorter_folders'
@@ -210,8 +210,8 @@ def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
 def copy_sortings_to_npz(study_folder):
     """
     Collect sorting and copy then in npz format into a separate folder.
-    Also copy 
-    
+    Also copy
+
     """
     study_folder = Path(study_folder)
     sorter_folders = study_folder / 'sorter_folders'
@@ -279,9 +279,9 @@ def collect_run_times(study_folder):
 
 def aggregate_sorting_comparison(study_folder, exhaustive_gt=False):
     """
-    Loop over output folder in a tree to collect sorting output and run 
+    Loop over output folder in a tree to collect sorting output and run
     ground_truth_comparison on them.
-    
+
     Parameters
     ----------
     study_folder: str
@@ -315,13 +315,13 @@ def aggregate_sorting_comparison(study_folder, exhaustive_gt=False):
 def aggregate_performances_table(study_folder, exhaustive_gt=False, **karg_thresh):
     """
     Aggregate some results into dataframe to have a "study" overview on all recordingXsorter.
-    
+
     Tables are:
       * run_times: run times per recordingXsorter
       * perf_pooled_with_sum: GroundTruthComparison.see get_performance
       * perf_pooled_with_average: GroundTruthComparison.see get_performance
       * count_units: given some threhold count how many units : 'well_detected', 'redundant', 'false_postive_units, 'bad'
-    
+
     Parameters
     ----------
     study_folder: str
@@ -329,7 +329,7 @@ def aggregate_performances_table(study_folder, exhaustive_gt=False, **karg_thres
 
     karg_thresh: dict
         Threholds paramerts used for the "count_units" table.
-    
+
     Returns
     ----------
 
