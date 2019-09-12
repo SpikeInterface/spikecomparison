@@ -530,12 +530,12 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
     bad_redundant_threshold: float
         Agreement threshold below which a unit is considered 'false positive' and above
         which is considered 'redundant' (default 0.2)
+    match_mode: 'hungarian', or 'best'
+        What is match used for counting : 'hugarian' or 'best match'.
     compute_labels: bool
         If True, labels are computed at instantiation (default True)
     compute_misclassification: bool
         If True, misclassification errors are computed (default False)
-    match_mode: 'hungarian', or 'best'
-        What is match used for counting : 'hugarian' or 'best match'.
     verbose: bool
         If True, output is verbose
     Returns
@@ -546,6 +546,6 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
     '''
     return GroundTruthComparison(gt_sorting=gt_sorting, tested_sorting=tested_sorting, gt_name=gt_name,
                                  tested_name=tested_name, delta_time=delta_time, min_accuracy=min_accuracy,
-                                 exhaustive_gt=exhaustive_gt, n_jobs=n_jobs, compute_labels=compute_labels,
-                                 bad_redundant_threshold=bad_redundant_threshold,
+                                 exhaustive_gt=exhaustive_gt, n_jobs=n_jobs, match_mode='hungarian', 
+                                 compute_labels=compute_labels, bad_redundant_threshold=bad_redundant_threshold,
                                  compute_misclassification=compute_misclassification, verbose=verbose)
