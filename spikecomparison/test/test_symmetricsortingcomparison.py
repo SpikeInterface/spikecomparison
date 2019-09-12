@@ -1,7 +1,7 @@
 import numpy as np
 
 import spikeextractors as se
-from spikecomparison.sortingcomparison import compare_two_sorters
+from spikecomparison.symmetricsortingcomparison import compare_two_sorters
 
 
 def make_sorting(times1, labels1, times2, labels2):
@@ -20,8 +20,7 @@ def test_compare_two_sorters():
                                       [101, 201, 301, ], [0, 0, 5])
     sc = compare_two_sorters(sorting1, sorting2)
 
-    conf = sc.get_confusion_matrix()
-    print(conf)
+    print(sc.agreement_scores)
 
 
 if __name__ == '__main__':

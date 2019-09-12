@@ -18,7 +18,7 @@ class MultiSortingComparison(BaseComparison):
         self._do_matching(verbose)
 
     def get_sorting_list(self):
-        return self._sorting_list
+        return self.sorting_list
 
     def get_agreement_sorting(self, minimum_matching=0):
         return AgreementSortingExtractor(self, min_agreement=minimum_matching)
@@ -27,15 +27,15 @@ class MultiSortingComparison(BaseComparison):
         # do pairwise matching
         self.sorting_comparisons = {}
         comparison_list = []
-        for i in range(len(self._sorting_list)):
+        for i in range(len(self.sorting_list)):
             comparison_ = {}
-            for j in range(len(self._sorting_list)):
+            for j in range(len(self.sorting_list)):
                 if i != j:
                     # and [self.name_list[i], self.name_list[j]] not in comparison_list \
                     #     and [self.name_list[j], self.name_list[i]] not in comparison_list:
                     if verbose:
                         print("Comparing: ", self.name_list[i], " and ", self.name_list[j])
-                    comparison_[self.name_list[j]] = SymmetricSortingComparison(self._sorting_list[i], self._sorting_list[j],
+                    comparison_[self.name_list[j]] = SymmetricSortingComparison(self.sorting_list[i], self.sorting_list[j],
                                                                         sorting1_name=self.name_list[i],
                                                                         sorting2_name=self.name_list[j],
                                                                         delta_time=self.delta_time,
@@ -45,21 +45,8 @@ class MultiSortingComparison(BaseComparison):
                                                                         verbose=verbose)
                     comparison_list.append([self.name_list[i], self.name_list[j]])
             self.sorting_comparisons[self.name_list[i]] = comparison_
-        print('Comparison list:', comparison_list)
-
-        sampling_freqs_not_none = [s.get_sampling_frequency() for s in self._sorting_list
-                          if s.get_sampling_frequency() is not None]
-        assert len(sampling_freqs_not_none) != 0 or self._sampling_frequency is not None, \
-            "Sampling frequency information not found. Pass it with the 'sampling_frequency' argument"
-
-        if len(sampling_freqs_not_none) > 0:
-            assert np.all([s == sampling_freqs_not_none[0] for s in sampling_freqs_not_none]), "Inconsintent " \
-                                                                                               "sampling frequency"
-            sampling_freq = sampling_freqs_not_none[0]
-        else:
-            sampling_freq = self._sampling_frequency
-
-        tolerance = int(self._delta_time / 1000 * sampling_freq)
+        if self.verbose:
+            print('Comparison list:', comparison_list)
 
         # create graph
         agreement = {}
@@ -154,7 +141,7 @@ class MultiSortingComparison(BaseComparison):
             self._new_units[u] = v
 
             if len(v['sorter_unit_ids'].keys()) == 1:
-                self._spiketrains.append(self._sorting_list[self.name_list.index(
+                self._spiketrains.append(self.sorting_list[self.name_list.index(
                     list(v['sorter_unit_ids'].keys())[0])].get_unit_spike_train(list(v['sorter_unit_ids'].values())[0]))
             else:
                 nodes = []
@@ -180,15 +167,15 @@ class MultiSortingComparison(BaseComparison):
                 sorter2, unit2 = n2.split('_')
                 unit1 = int(unit1)
                 unit2 = int(unit2)
-                sp1 = self._sorting_list[self.name_list.index(sorter1)].get_unit_spike_train(unit1)
-                sp2 = self._sorting_list[self.name_list.index(sorter2)].get_unit_spike_train(unit2)
+                sp1 = self.sorting_list[self.name_list.index(sorter1)].get_unit_spike_train(unit1)
+                sp2 = self.sorting_list[self.name_list.index(sorter2)].get_unit_spike_train(unit2)
                 lab1, lab2 = compare_spike_trains(sp1, sp2)
                 tp_idx1 = np.where(np.array(lab1) == 'TP')[0]
                 tp_idx2 = np.where(np.array(lab2) == 'TP')[0]
                 assert len(tp_idx1) == len(tp_idx2)
                 sp_tp1 = list(np.array(sp1)[tp_idx1])
                 sp_tp2 = list(np.array(sp2)[tp_idx2])
-                assert np.allclose(sp_tp1, sp_tp2, atol=tolerance)
+                assert np.allclose(sp_tp1, sp_tp2, atol=self.delta_frames)
                 self._spiketrains.append(sp_tp1)
         self.added_nodes = added_nodes
 

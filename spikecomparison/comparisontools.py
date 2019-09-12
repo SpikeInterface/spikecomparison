@@ -3,6 +3,7 @@ Some functions internally use by SortingComparison.
 """
 
 import numpy as np
+import pandas as pd
 from joblib import Parallel, delayed
 from scipy.optimize import linear_sum_assignment
 
@@ -61,6 +62,23 @@ def compute_agreement_score(num_matches, num1, num2):
         return 0
     return num_matches / denom
 
+def do_count_event(sorting):
+    """
+    Count event for each units in a sorting.
+    Parameters
+    ----------
+    sorting: SortingExtractor
+        A sorting extractor
+    
+    Returns
+    -------
+    event_count: pd.Series
+        Nb of spike by units.
+    """
+    unit_ids = sorting.get_unit_ids()
+    ev_counts = np.array([len(sorting.get_unit_spike_train(u)) for u in unit_ids], dtype='int64')
+    event_counts = pd.Series(ev_counts, index=unit_ids)
+    return event_counts
 
 def count_match_spikes(times1, all_times2,  delta_frames): # , event_counts1, event_counts2  unit2_ids,
     """
@@ -72,30 +90,16 @@ def count_match_spikes(times1, all_times2,  delta_frames): # , event_counts1, ev
         Spike train 1 frames
     all_times2: list of array
         List of spike trains from sorting 2
-    ##unit2_ids: list
-##        List of units for sorting 2
-    delta_frames: int
-        Number of frames to consider matching spikes
-##    event_counts1:  int
-##        Number of eventes for spike train 1
-##    event_counts2: list
-##        List of numbe of events for spike trains of sorting 2
 
     Returns
     -------
     matching_events_count: list
         List of counts of matching events
-    ##scores: list
-     ##   List of scores between spike train 1 and spike trains from sorting 2
     """
     matching_event_counts = np.zeros(len(all_times2), dtype='int64')
-    # scores = []
     for i2, times2 in enumerate(all_times2):
         num_matches = count_matching_events(times1, times2, delta=delta_frames)
         matching_event_counts[i2] = num_matches
-        
-        #~ matching_event_counts.append(num_matches)
-        # scores.append(compute_agreement_score(num_matches, event_counts1, event_counts2[i2]))
     return matching_event_counts
 
 
@@ -135,12 +139,13 @@ def make_match_count_matrix(sorting1, sorting2, delta_frames, n_jobs=1):
     match_event_count_lists = Parallel(n_jobs=n_jobs)(delayed(count_match_spikes)(sorting1.get_unit_spike_train(u1), 
                             s2_spiketrains,delta_frames) for i1, u1 in enumerate(unit1_ids))
     
-    match_event_count = np.array(match_event_count_lists)
+    match_event_count = pd.DataFrame(np.array(match_event_count_lists),
+                                                    index=unit1_ids, columns=unit2_ids)
     
     return match_event_count
 
 
-def make_agreement_matrix(sorting1, sorting2, delta_frames, n_jobs=1):
+def make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1):
     """
     Make the agreement matrix.
     No threshold (min_accuracy) is applied at this step.
@@ -166,23 +171,28 @@ def make_agreement_matrix(sorting1, sorting2, delta_frames, n_jobs=1):
     Returns
     -------
     
-    agreement_matrix: array (float)
+    agreement_scores: array (float)
         The agreement score matrix.
     
     """
-    event_counts1 = np.array([len(sorting1.get_unit_spike_train(u1)) for u1 in sorting1.get_unit_ids()], dtype='int64')
-    event_counts2 = np.array([len(sorting2.get_unit_spike_train(u2)) for u2 in sorting2.get_unit_ids()], dtype='int64')
+    unit1_ids = np.array(sorting1.get_unit_ids())
+    unit2_ids = np.array(sorting2.get_unit_ids())
+
+    ev_counts1 = np.array([len(sorting1.get_unit_spike_train(u1)) for u1 in unit1_ids], dtype='int64')
+    ev_counts2 = np.array([len(sorting2.get_unit_spike_train(u2)) for u2 in unit2_ids], dtype='int64')
+    event_counts1 = pd.Series(ev_counts1, index=unit1_ids)
+    event_counts2 = pd.Series(ev_counts2, index=unit2_ids)
 
     match_event_count = make_match_count_matrix(sorting1, sorting2, delta_frames, n_jobs=n_jobs)
     
-    agreement_matrix = make_agreement_matrix_from_count(match_event_count, event_counts1, event_counts2)
+    agreement_scores = make_agreement_scores_from_count(match_event_count, event_counts1, event_counts2)
     
-    return agreement_matrix
+    return agreement_scores
 
 
-def make_agreement_matrix_from_count(match_event_count, event_counts1, event_counts2):
+def make_agreement_scores_from_count(match_event_count, event_counts1, event_counts2):
     """
-    See make_agreement_matrix.
+    See make_agreement_scores.
     Other signature here to avoid to recompute match_event_count matrix.
     
     Parameters
@@ -194,17 +204,18 @@ def make_agreement_matrix_from_count(match_event_count, event_counts1, event_cou
     """
 
     # numpy broadcast style
-    denom = event_counts1[:, None] + event_counts2[None, :] - match_event_count
+    denom = event_counts1.values[:, None] + event_counts2.values[None, :] - match_event_count.values
     # little trick here when denom is 0 to avoid 0 division : lets put -1
     # it will 0 anyway
     denom[denom == 0] = -1
     
-    agreement_matrix = match_event_count / denom
-    
-    return agreement_matrix
+    agreement_scores = match_event_count.values / denom
+    agreement_scores = pd.DataFrame(agreement_scores, 
+                        index=match_event_count.index, columns=match_event_count.columns)
+    return agreement_scores
 
 
-def make_possible_match(sorting1, sorting2, agreement_matrix, min_accuracy):
+def make_possible_match(sorting1, sorting2, agreement_scores, min_accuracy):
     """
     Given an agreement matrix and a min_accuracy threhold.
     Return as a dict all possible match for each spiketrain in each side.
@@ -216,8 +227,8 @@ def make_possible_match(sorting1, sorting2, agreement_matrix, min_accuracy):
     unit2_ids = np.array(sorting2.get_unit_ids())
     
     # threhold the matrix
-    scores = agreement_matrix.copy()
-    scores[agreement_matrix<min_accuracy] =0
+    scores = agreement_scores.copy()
+    scores[agreement_scores<min_accuracy] =0
     
     possible_match_12 =  {}
     for i1, u1 in enumerate(unit1_ids):
@@ -234,7 +245,7 @@ def make_possible_match(sorting1, sorting2, agreement_matrix, min_accuracy):
     
     
 
-def make_best_match(sorting1, sorting2, agreement_matrix, min_accuracy):
+def make_best_match(sorting1, sorting2, agreement_scores, min_accuracy):
     """
     Given an agreement matrix and a min_accuracy threhold.
     return a dict a best match for each units independently of others.
@@ -246,19 +257,18 @@ def make_best_match(sorting1, sorting2, agreement_matrix, min_accuracy):
     unit1_ids = np.array(sorting1.get_unit_ids())
     unit2_ids = np.array(sorting2.get_unit_ids())
 
-    
-    best_match_12 =  {}
+    best_match_12 = pd.Series(index=unit1_ids, dtype='int64')
     for i1, u1 in enumerate(unit1_ids):
-        ind_max = np.argmax(agreement_matrix[i1, :])
-        if agreement_matrix[i1, ind_max] >= min_accuracy:
+        ind_max = np.argmax(agreement_scores[i1, :])
+        if agreement_scores[i1, ind_max] >= min_accuracy:
             best_match_12[u1] = unit2_ids[ind_max]
         else:
             best_match_12[u1] = -1
 
-    best_match_21 =  {}
+    best_match_21 = pd.Series(index=unit2_ids, dtype='int64')
     for i2, u2 in enumerate(unit2_ids):
-        ind_max = np.argmax(agreement_matrix[:, i2])
-        if agreement_matrix[ind_max, i2] >= min_accuracy:
+        ind_max = np.argmax(agreement_scores[:, i2])
+        if agreement_scores[ind_max, i2] >= min_accuracy:
             best_match_21[u2] = unit1_ids[ind_max]
         else:
             best_match_21[u2] = -1
@@ -266,7 +276,7 @@ def make_best_match(sorting1, sorting2, agreement_matrix, min_accuracy):
     return best_match_12, best_match_21
 
     
-def make_hungarian_match(sorting1, sorting2, agreement_matrix, min_accuracy):
+def make_hungarian_match(sorting1, sorting2, agreement_scores, min_accuracy):
     """
     Given an agreement matrix and a min_accuracy threhold.
     return the "optimal" match with the "hungarian" algo.
@@ -278,12 +288,12 @@ def make_hungarian_match(sorting1, sorting2, agreement_matrix, min_accuracy):
     unit2_ids = sorting2.get_unit_ids()
 
     # threhold the matrix
-    scores = agreement_matrix.copy()
-    scores[agreement_matrix<min_accuracy] =0
+    scores = agreement_scores.copy()
+    scores[agreement_scores<min_accuracy] =0
     
     [inds1, inds2] = linear_sum_assignment(-scores)
     
-    hungarian_match_12 = {}
+    hungarian_match_12 =  pd.Series(index=unit1_ids, dtype='int64')
     for i1, u1 in enumerate(unit1_ids):
         if i1 in inds1:
             ind = np.nonzero(inds1==i1)[0][0]
@@ -291,7 +301,7 @@ def make_hungarian_match(sorting1, sorting2, agreement_matrix, min_accuracy):
         else:
             hungarian_match_12[u1] = -1
     
-    hungarian_match_21 = {}
+    hungarian_match_21 =  pd.Series(index=unit2_ids, dtype='int64')
     for i2, u2 in enumerate(unit2_ids):
         if i2 in inds2:
             ind = np.nonzero(inds2==i2)[0][0]
@@ -566,33 +576,116 @@ def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclass
 
     return labels_st1, labels_st2
 
+def compare_spike_trains(spiketrain1, spiketrain2, delta_frames=10):
+    """
+    Compares 2 spike trains.
 
-def do_confusion_matrix(sorting1, sorting2, unit_map12, labels_st1, labels_st2):
+    Note:
+      * The first spiketrain is supposed to be the ground truth.
+      * this implementation do not count a TP when more than one spike
+        is present around the same time in spiketrain2.
+
+    Parameters
+    ----------
+    spiketrain1,spiketrain2: numpy.array
+        Times of spikes for the 2 spike trains.
+
+    Returns
+    -------
+    lab_st1, lab_st2: numpy.array
+        Label of score for each spike
+
+    """
+    lab_st1 = np.array(['UNPAIRED'] * len(spiketrain1))
+    lab_st2 = np.array(['UNPAIRED'] * len(spiketrain2))
+
+    # from gtst: TP, TPO, TPSO, FN, FNO, FNSO
+    for sp_i, n_sp in enumerate(spiketrain1):
+        matches = (np.abs(spiketrain2.astype(int) - n_sp) <= delta_frames // 2)
+        if np.sum(matches) > 0:
+            if lab_st1[sp_i] != 'TP' and lab_st2[np.where(matches)[0][0]] != 'TP':
+                lab_st1[sp_i] = 'TP'
+                lab_st2[np.where(matches)[0][0]] = 'TP'
+
+    for l_gt, lab in enumerate(lab_st1):
+        if lab == 'UNPAIRED':
+            lab_st1[l_gt] = 'FN'
+
+    for l_gt, lab in enumerate(lab_st2):
+        if lab == 'UNPAIRED':
+            lab_st2[l_gt] = 'FP'
+
+    return lab_st1, lab_st2
+
+
+def do_confusion_matrix(event_counts1, event_counts2, match_12, match_event_count):
     """
     Computes the confusion matrix between two sorting.
 
     Parameters
     ----------
-    sorting1: SortingExtractor instance
-        The ground truth sorting
-    sorting2: SortingExtractor instance
-        The tested sorting
-    unit_map12: dict
-        Dict of matching from sorting1 to sorting2.
-
+    event_counts1: pd.Series
+        
+    event_counts2: pd.Series
+        
+    match_12: pd.Series
+        Series of matching from sorting1 to sorting2.
+        Can be the hungarian or best match.
+    match_event_count: pd.DataFrame
+        The match count matrix given by make_match_count_matrix
     Returns
     ------
-    confusion_matrix: np.array
+    confusion_matrix: pd.DataFrame
         The confusion matrix
-    st1_idxs: np.array
-        Array with order of units1 in confusion matrix
-    st2_idxs: np.array
-        Array with order of units2 in confusion matrix
+        index are units1 reordered
+        columns are units2 redordered
     """
-    unit1_ids = np.array(sorting1.get_unit_ids())
-    unit2_ids = np.array(sorting2.get_unit_ids())
+    unit1_ids = np.array(match_event_count.index)
+    unit2_ids = np.array(match_event_count.columns)
     N1 = len(unit1_ids)
     N2 = len(unit2_ids)
+    
+    matched_units1 = match_12[match_12 != -1].index
+    matched_units2 = match_12[match_12 != -1].values
+    
+    unmatched_units1 = match_12[match_12 == -1].index
+    unmatched_units2 = unit2_ids[~np.in1d(unit2_ids, matched_units2)]
+    
+    ordered_units1 = np.hstack([matched_units1, unmatched_units1])
+    ordered_units2 = np.hstack([matched_units2, unmatched_units2])
+    
+    conf_matrix = pd.DataFrame(np.zeros((N1 + 1, N2 + 1), dtype=int),
+                        index=list(ordered_units1)+['FP'],
+                        columns=list(ordered_units2)+['FN'])
+    
+    for u1 in matched_units1:
+        u2 = match_12[u1]
+        num_match = match_event_count.at[u1, u2]
+        conf_matrix.at[u1, u2] = num_match
+        conf_matrix.at[u1, 'FN'] = event_counts1.at[u1] - num_match
+        conf_matrix.at['FP', u2] = event_counts2.at[u2] - num_match
+    
+    for u1 in unmatched_units1:
+        conf_matrix.at[u1, 'FN'] = event_counts1.at[u1]
+    
+    for u2 in unmatched_units2:
+        conf_matrix.at['FP', u2] = event_counts2.at[u2]
+    
+    return conf_matrix
+    
+    
+    mapped_units = np.array(list(unit_map12.values()))
+    idxs_matched, = np.where(mapped_units != -1)
+    idxs_unmatched, = np.where(mapped_units == -1)
+    unit_map_matched = mapped_units[idxs_matched]
+
+    st1_idxs = np.hstack([unit1_ids[idxs_matched], unit1_ids[idxs_unmatched]])
+    st2_matched = unit_map_matched
+    
+    
+    
+    
+    
 
     conf_matrix = np.zeros((N1 + 1, N2 + 1), dtype=int)
 
@@ -639,43 +732,4 @@ def do_confusion_matrix(sorting1, sorting2, unit_map12, labels_st1, labels_st2):
     return conf_matrix, st1_idxs, st2_idxs
 
 
-def compare_spike_trains(spiketrain1, spiketrain2, delta_frames=10):
-    """
-    Compares 2 spike trains.
 
-    Note:
-      * The first spiketrain is supposed to be the ground truth.
-      * this implementation do not count a TP when more than one spike
-        is present around the same time in spiketrain2.
-
-    Parameters
-    ----------
-    spiketrain1,spiketrain2: numpy.array
-        Times of spikes for the 2 spike trains.
-
-    Returns
-    -------
-    lab_st1, lab_st2: numpy.array
-        Label of score for each spike
-
-    """
-    lab_st1 = np.array(['UNPAIRED'] * len(spiketrain1))
-    lab_st2 = np.array(['UNPAIRED'] * len(spiketrain2))
-
-    # from gtst: TP, TPO, TPSO, FN, FNO, FNSO
-    for sp_i, n_sp in enumerate(spiketrain1):
-        matches = (np.abs(spiketrain2.astype(int) - n_sp) <= delta_frames // 2)
-        if np.sum(matches) > 0:
-            if lab_st1[sp_i] != 'TP' and lab_st2[np.where(matches)[0][0]] != 'TP':
-                lab_st1[sp_i] = 'TP'
-                lab_st2[np.where(matches)[0][0]] = 'TP'
-
-    for l_gt, lab in enumerate(lab_st1):
-        if lab == 'UNPAIRED':
-            lab_st1[l_gt] = 'FN'
-
-    for l_gt, lab in enumerate(lab_st2):
-        if lab == 'UNPAIRED':
-            lab_st2[l_gt] = 'FP'
-
-    return lab_st1, lab_st2
