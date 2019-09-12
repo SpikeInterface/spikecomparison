@@ -29,22 +29,26 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                  delta_time=0.3, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=0.2,
-                 n_jobs=-1, compute_labels=True, compute_misclassification=True, verbose=False):
+                 n_jobs=-1, match_mode ='hungarian', compute_labels=False, compute_misclassification=True,  verbose=False):
+
         if gt_name is None:
             gt_name = 'ground truth'
         if tested_name is None:
             tested_name = 'tested'
         BaseTwoSorterComparison.__init__(self, gt_sorting, tested_sorting, sorting1_name=gt_name, sorting2_name=tested_name,
                                 delta_time=delta_time, min_accuracy=min_accuracy, n_jobs=n_jobs,
-                                compute_labels=compute_labels, compute_misclassification=compute_misclassification,
                                 verbose=verbose)
         self.exhaustive_gt = exhaustive_gt
         self.bad_redundant_threshold = bad_redundant_threshold
-        
+
+        assert match_mode in ['hungarian', 'best']
+        self.match_mode = match_mode
         self.compute_labels = compute_labels
         self.compute_misclassification = compute_misclassification
         
-
+        
+        self._do_count()
+        
         self._labels_st1 = None
         self._labels_st2 = None
         if self._compute_labels:
@@ -52,10 +56,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
         # confusion matrix is compute on demand
         self._confusion_matrix = None
-
-
         
-        self._do_count()
+        
     
     def get_labels1(self, unit_id):
         if unit_id in self.sorting1.get_unit_ids():
@@ -73,15 +75,54 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         if self._verbose:
             print("Matching...")
 
+        self.possible_match_12, self.possible_match_21 = make_possible_match(sorting1, sorting2, agreement_matrix, min_accuracy)
+        self.best_match_12, self.best_match_21 = make_best_match(sorting1, sorting2, agreement_matrix, min_accuracy)
+        self.hungarian_match_12, self.hungarian_match_21 = make_hungarian_match(sorting1, sorting2, agreement_matrix, min_accuracy)
 
 
-
-
-        self._event_counts_1, self._event_counts_2, self._matching_event_counts_12, \
-        self._best_match_units_12, self._matching_event_counts_21, \
-        self._best_match_units_21, self._unit_map12, \
-        self._unit_map21 = do_matching(self.sorting1, self.sorting2, self._delta_frames, self._min_accuracy,
-                                       self._n_jobs)
+    def _do_count(self):
+        """
+        Do raw count into a dataframe.
+        
+        Internally use hugarian match or best match.
+        
+        If compute_labels=True then use it otherwise make the counting.
+        
+        """
+        if self.match_mode == 'hungarian':
+            match12 = self.hungarian_match_12
+        elif self.match_mode == 'best':
+            match12 = self.best_match_12
+        
+        
+        
+        unit1_ids = np.array(sorting1.get_unit_ids())
+        unit2_ids = np.array(sorting2.get_unit_ids())
+        
+        columns = ['tp', 'fn', 'cl', 'fp', 'num_gt', 'num_tested', 'tested_id']
+        self.count = pd.DataFrame(index=unit1_ids, columns=columns)
+        self.count.index.name = 'gt_unit_id'
+        for i1, u1 in enumerate(unit1_ids):
+            u2 = match12[u1]
+            self.count.loc[u1, 'tested_id'] = u2
+            if u2 == -1:
+                self.count.loc[u1, 'num_tested'] = 0
+                self.count.loc[u1, 'tp'] = 0
+                self.count.loc[u1, 'fp'] = 0
+                # self.count.loc[u1, 'cl'] = 0
+                self.count.loc[u1, 'fn'] = self.dict_event_counts1[u1]
+                self.count.loc[u1, 'num_gt'] = 0
+            else:
+                i2 = np.nonzero(unit2_ids==u2)[0][0]
+                num_match = self.match_event_count[i1, i2]
+                
+                self.count.loc[u1, 'tp'] = num_match
+                # self.count.loc[u1, 'cl'] = sum(e.startswith('CL') for e in self._labels_st1[u1])
+                self.count.loc[u1, 'fn'] = self.dict_event_counts1[u1] - num_match
+                self.count.loc[u1, 'fp'] = self.dict_event_counts2[u2] - num_match
+                
+                self.count.loc[u1, 'num_gt'] = self.dict_event_counts1[u1]
+                self.count.loc[u1, 'num_tested'] = self.dict_event_counts2[u2]
 
     def _do_confusion_matrix(self):
         if self._verbose:
@@ -110,34 +151,12 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         return self._confusion_matrix, self._st1_idxs, self._st2_idxs
 
 
-    def _do_count(self):
-        """
-        Do raw count into a dataframe.
-        """
-        unit1_ids = self.sorting1.get_unit_ids()
-        columns = ['tp', 'fn', 'cl', 'fp', 'num_gt', 'num_tested', 'tested_id']
-        self.count = pd.DataFrame(index=unit1_ids, columns=columns)
-        self.count.index.name = 'gt_unit_id'
-        for u1 in unit1_ids:
-            ## this was the previous count based on hungarian match:
-            ## u2 = self._unit_map12[u1] 
-            # now we use the best match wich is more natural for GT
-            u2 = self._best_match_units_12[u1]
-            
-            self.count.loc[u1, 'tp'] = np.sum(self._labels_st1[u1] == 'TP')
-            self.count.loc[u1, 'cl'] = sum(e.startswith('CL') for e in self._labels_st1[u1])
-            self.count.loc[u1, 'fn'] = np.sum(self._labels_st1[u1] == 'FN')
-            self.count.loc[u1, 'num_gt'] = self._labels_st1[u1].size
-            self.count.loc[u1, 'tested_id'] = u2
 
-            if u2 == -1:
-                self.count.loc[u1, 'fp'] = 0
-                self.count.loc[u1, 'num_tested'] = 0
-            else:
-                self.count.loc[u1, 'fp'] = np.sum(self._labels_st2[u2] == 'FP')
-                self.count.loc[u1, 'num_tested'] = self._labels_st2[u2].size
 
     def _do_score_labels(self):
+        assert self.match_mode == 'hungarian',\
+                    'Labels (TP, FP, FN) can be computed only with hungarian match'            
+
         if self._verbose:
             print("Adding labels...")
 
@@ -515,6 +534,8 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
         If True, labels are computed at instantiation (default True)
     compute_misclassification: bool
         If True, misclassification errors are computed (default False)
+    match_mode: 'hungarian', or 'best'
+        What is match used for counting : 'hugarian' or 'best match'.
     verbose: bool
         If True, output is verbose
     Returns

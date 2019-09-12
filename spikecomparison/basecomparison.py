@@ -67,8 +67,6 @@ class BaseTwoSorterComparison(BaseComparison):
                 sampling_frequency=sampling_frequency, min_accuracy=min_accuracy,
                 n_jobs=n_jobs, verbose=verbose)
         
-        self.compute_labels =compute_labels
-        self.compute_misclassification = compute_misclassification
         
         self._do_agreement() 
         self._do_matching()
@@ -92,9 +90,17 @@ class BaseTwoSorterComparison(BaseComparison):
     def _do_agreement(self):
         # common to GroundTruthComparison and SymmetricSortingComparison
         
+        unit1_ids = sorting1.get_unit_ids()
+        unit2_ids = sorting2.get_unit_ids()
+        
         # spike count for each spike train
-        self.event_counts1 = np.array([len(sorting1.get_unit_spike_train(u1)) for u1 in sorting1.get_unit_ids()], dtype='int64')
-        self.event_counts2 = np.array([len(sorting2.get_unit_spike_train(u2)) for u2 in sorting2.get_unit_ids()], dtype='int64')
+        self.event_counts1 = np.array([len(sorting1.get_unit_spike_train(u1)) for u1 in unit1_ids], dtype='int64')
+        self.event_counts2 = np.array([len(sorting2.get_unit_spike_train(u2)) for u2 in unit2_ids], dtype='int64')
+        
+        # same here but with dict
+        self.dict_event_counts1 = {u1:self.event_counts1[i1] for i1, u1 in enumerate(unit1_ids)}
+        self.dict_event_counts2 = {u2:self.event_counts2[i2] for i2, u2 in enumerate(unit2_ids)}
+
         
         # matrix of count for each pair
         self.match_event_count = make_match_count_matrix(self.sorting1, self.sorting2, delta_frames, n_jobs=n_jobs)

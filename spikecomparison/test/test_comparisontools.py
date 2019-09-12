@@ -49,7 +49,7 @@ def test_make_agreement_matrix():
 
 
 def test_make_possible_match():
-
+    
     delta_frames = 10
     min_accuracy = 0.5
     
@@ -60,9 +60,16 @@ def test_make_possible_match():
     agreement_matrix = make_agreement_matrix(sorting1, sorting2, delta_frames, n_jobs=1)
     
     possible_match_12, possible_match_21 = make_possible_match(sorting1, sorting2, agreement_matrix, min_accuracy)
+
+    # print(possible_match_12)
+    # print(possible_match_21)
+
+    assert_array_equal(possible_match_12[0], [0])
+    assert_array_equal(possible_match_12[1], [5])
+    assert_array_equal(possible_match_21[0], [0])
+    assert_array_equal(possible_match_21[5], [1])
     
-    print(possible_match_12)
-    print(possible_match_21)
+    
     
     
 def test_make_best_match():
@@ -77,8 +84,13 @@ def test_make_best_match():
     
     best_match_12, best_match_21 = make_best_match(sorting1, sorting2, agreement_matrix, min_accuracy)
 
-    print(best_match_12)
-    print(best_match_21)
+    # print(best_match_12)
+    # print(best_match_21)
+    
+    assert best_match_12[0] == 0
+    assert best_match_12[1] == 5
+    assert best_match_21[0] == 0
+    assert best_match_21[5] == 1
     
 
     
@@ -94,8 +106,13 @@ def test_make_hungarian_match():
     
     hungarian_match_12, hungarian_match_21 = make_hungarian_match(sorting1, sorting2, agreement_matrix, min_accuracy)
 
-    print(hungarian_match_12)
-    print(hungarian_match_21)
+    # print(hungarian_match_12)
+    # print(hungarian_match_21)
+
+    assert hungarian_match_12[0] == 0
+    assert hungarian_match_12[1] == 5
+    assert hungarian_match_21[0] == 0
+    assert hungarian_match_21[5] == 1
 
 
 #~ def test_do_matching():
@@ -192,8 +209,8 @@ if __name__ == '__main__':
     #~ test_make_match_count_matrix()
     #~ test_make_agreement_matrix()
     
-    #~ test_make_possible_match()
-    #~ test_make_best_match()
+    test_make_possible_match()
+    test_make_best_match()
     test_make_hungarian_match()
     
     #~ test_do_matching()

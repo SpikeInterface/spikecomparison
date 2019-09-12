@@ -222,7 +222,6 @@ def make_possible_match(sorting1, sorting2, agreement_matrix, min_accuracy):
     possible_match_12 =  {}
     for i1, u1 in enumerate(unit1_ids):
         inds_match, = np.nonzero(scores[i1, :])
-        print(inds_match)
         possible_match_12[u1] = unit2_ids[inds_match]
 
     possible_match_21 =  {}
