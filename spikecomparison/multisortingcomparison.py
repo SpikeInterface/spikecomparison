@@ -1,25 +1,20 @@
 import numpy as np
 import spikeextractors as se
 from scipy.optimize import linear_sum_assignment
+from .basecomparison import BaseComparison
 from .symmetricsortingcomparison import SymmetricSortingComparison
 from .comparisontools import compare_spike_trains
 
 import networkx as nx
 
 
-class MultiSortingComparison():
-    def __init__(self, sorting_list, name_list=None, delta_time=0.3, min_accuracy=0.5, n_jobs=-1,
-                 sampling_frequency=None, verbose=False):
-        if len(sorting_list) > 1 and np.all(isinstance(s, se.SortingExtractor) for s in sorting_list):
-            self._sorting_list = sorting_list
-        if name_list is not None and len(name_list) == len(sorting_list):
-            self._name_list = name_list
-        else:
-            self._name_list = ['sorter' + str(i) for i in range(len(sorting_list))]
-        self._delta_time = delta_time
-        self._min_accuracy = min_accuracy
-        self._n_jobs = n_jobs
-        self._sampling_frequency = sampling_frequency,
+class MultiSortingComparison(BaseComparison):
+    def __init__(self, sorting_list, name_list=None, delta_time=0.3, sampling_frequency=None, 
+                min_accuracy=0.5, n_jobs=-1, verbose=False):
+        
+        BaseComparison.__init__(self, sorting_list, name_list=name_list, 
+                delta_time=delta_time, sampling_frequency=sampling_frequency, 
+                min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
         self._do_matching(verbose)
 
     def get_sorting_list(self):
@@ -36,19 +31,20 @@ class MultiSortingComparison():
             comparison_ = {}
             for j in range(len(self._sorting_list)):
                 if i != j:
-                    # and [self._name_list[i], self._name_list[j]] not in comparison_list \
-                    #     and [self._name_list[j], self._name_list[i]] not in comparison_list:
+                    # and [self.name_list[i], self.name_list[j]] not in comparison_list \
+                    #     and [self.name_list[j], self.name_list[i]] not in comparison_list:
                     if verbose:
-                        print("Comparing: ", self._name_list[i], " and ", self._name_list[j])
-                    comparison_[self._name_list[j]] = SymmetricSortingComparison(self._sorting_list[i], self._sorting_list[j],
-                                                                        sorting1_name=self._name_list[i],
-                                                                        sorting2_name=self._name_list[j],
-                                                                        delta_time=self._delta_time,
-                                                                        min_accuracy=self._min_accuracy,
-                                                                        n_jobs=self._n_jobs,
+                        print("Comparing: ", self.name_list[i], " and ", self.name_list[j])
+                    comparison_[self.name_list[j]] = SymmetricSortingComparison(self._sorting_list[i], self._sorting_list[j],
+                                                                        sorting1_name=self.name_list[i],
+                                                                        sorting2_name=self.name_list[j],
+                                                                        delta_time=self.delta_time,
+                                                                        sampling_frequency=self.sampling_frequency,
+                                                                        min_accuracy=self.min_accuracy,
+                                                                        n_jobs=self.n_jobs,
                                                                         verbose=verbose)
-                    comparison_list.append([self._name_list[i], self._name_list[j]])
-            self.sorting_comparisons[self._name_list[i]] = comparison_
+                    comparison_list.append([self.name_list[i], self.name_list[j]])
+            self.sorting_comparisons[self.name_list[i]] = comparison_
         print('Comparison list:', comparison_list)
 
         sampling_freqs_not_none = [s.get_sampling_frequency() for s in self._sorting_list
@@ -158,7 +154,7 @@ class MultiSortingComparison():
             self._new_units[u] = v
 
             if len(v['sorter_unit_ids'].keys()) == 1:
-                self._spiketrains.append(self._sorting_list[self._name_list.index(
+                self._spiketrains.append(self._sorting_list[self.name_list.index(
                     list(v['sorter_unit_ids'].keys())[0])].get_unit_spike_train(list(v['sorter_unit_ids'].values())[0]))
             else:
                 nodes = []
@@ -184,8 +180,8 @@ class MultiSortingComparison():
                 sorter2, unit2 = n2.split('_')
                 unit1 = int(unit1)
                 unit2 = int(unit2)
-                sp1 = self._sorting_list[self._name_list.index(sorter1)].get_unit_spike_train(unit1)
-                sp2 = self._sorting_list[self._name_list.index(sorter2)].get_unit_spike_train(unit2)
+                sp1 = self._sorting_list[self.name_list.index(sorter1)].get_unit_spike_train(unit1)
+                sp2 = self._sorting_list[self.name_list.index(sorter2)].get_unit_spike_train(unit2)
                 lab1, lab2 = compare_spike_trains(sp1, sp2)
                 tp_idx1 = np.where(np.array(lab1) == 'TP')[0]
                 tp_idx2 = np.where(np.array(lab2) == 'TP')[0]
@@ -196,8 +192,9 @@ class MultiSortingComparison():
                 self._spiketrains.append(sp_tp1)
         self.added_nodes = added_nodes
 
+
     def _do_agreement_matrix(self, minimum_matching=0):
-        sorted_name_list = sorted(self._name_list)
+        sorted_name_list = sorted(self.name_list)
         sorting_agr = AgreementSortingExtractor(self, minimum_matching)
         unit_ids = sorting_agr.get_unit_ids()
         agreement_matrix = np.zeros((len(unit_ids), len(sorted_name_list)))
@@ -216,7 +213,7 @@ class MultiSortingComparison():
 
     def plot_agreement(self, minimum_matching=0):
         import matplotlib.pylab as plt
-        sorted_name_list = sorted(self._name_list)
+        sorted_name_list = sorted(self.name_list)
         sorting_agr = AgreementSortingExtractor(self, minimum_matching)
         unit_ids = sorting_agr.get_unit_ids()
         agreement_matrix = self._do_agreement_matrix(minimum_matching)
