@@ -1,27 +1,19 @@
 import numpy as np
 import spikeextractors as se
 
-from .basecomparison import BaseComparison
+from .basecomparison import BaseTwoSorterComparison
 from .comparisontools import compute_agreement_score, do_score_labels
 
 
-class SortingComparison(BaseComparison):
+
+class SymmetricSortingComparison(BaseTwoSorterComparison):
     """
-    Class for comparison of two sorters when no assumption is done.
+    Class for symmetric comparison of two sorters when no assumption is done.
     """
     def __init__(self, sorting1, sorting2, sorting1_name=None, sorting2_name=None,
-                 delta_time=0.3, min_accuracy=0.5, n_jobs=-1,
-                 compute_labels=False, compute_misclassification=False, verbose=False):
-        BaseComparison.__init__(self, sorting1, sorting2, sorting1_name=sorting1_name, sorting2_name=sorting2_name,
-                                delta_time=delta_time, min_accuracy=min_accuracy, n_jobs=n_jobs, compute_labels=compute_labels,
-                                compute_misclassification=compute_misclassification, verbose=verbose)
-
-    def _do_score_labels(self):
-        if self._verbose:
-            print("Adding labels...")
-        self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
-                                                             self._delta_frames, self._unit_map12,
-                                                             self._compute_misclassification)
+                 delta_time=0.3, min_accuracy=0.5, n_jobs=-1, verbose=False):
+        BaseTwoSorterComparison.__init__(self, sorting1, sorting2, sorting1_name=sorting1_name, sorting2_name=sorting2_name,
+                                delta_time=delta_time, min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
 
     def get_mapped_sorting1(self):
         """

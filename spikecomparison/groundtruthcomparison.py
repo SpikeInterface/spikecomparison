@@ -1,15 +1,15 @@
 import numpy as np
 import pandas as pd
 
-from .basecomparison import BaseComparison
+from .basecomparison import BaseTwoSorterComparison
 from .comparisontools import compute_agreement_score, do_score_labels
 
 
-# Note for dev,  because of  BaseComparison internally:
+# Note for dev,  because of  BaseTwoSorterComparison internally:
 #     sorting1 = gt_sorting
 #     sorting2 = tested_sorting
 
-class GroundTruthComparison(BaseComparison):
+class GroundTruthComparison(BaseTwoSorterComparison):
     """
     Class to compare a sorter to ground truth (GT)
     
@@ -28,21 +28,87 @@ class GroundTruthComparison(BaseComparison):
     """
 
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
-                 delta_time=0.3, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=None,
+                 delta_time=0.3, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=0.2,
                  n_jobs=-1, compute_labels=True, compute_misclassification=True, verbose=False):
         if gt_name is None:
             gt_name = 'ground truth'
         if tested_name is None:
             tested_name = 'tested'
-        BaseComparison.__init__(self, gt_sorting, tested_sorting, sorting1_name=gt_name, sorting2_name=tested_name,
+        BaseTwoSorterComparison.__init__(self, gt_sorting, tested_sorting, sorting1_name=gt_name, sorting2_name=tested_name,
                                 delta_time=delta_time, min_accuracy=min_accuracy, n_jobs=n_jobs,
                                 compute_labels=compute_labels, compute_misclassification=compute_misclassification,
                                 verbose=verbose)
         self.exhaustive_gt = exhaustive_gt
-        if bad_redundant_threshold is None:
-            bad_redundant_threshold = 0.2
-        self._bad_redundant_threshold = bad_redundant_threshold
+        self.bad_redundant_threshold = bad_redundant_threshold
+        
+        self.compute_labels = compute_labels
+        self.compute_misclassification = compute_misclassification
+        
+
+        self._labels_st1 = None
+        self._labels_st2 = None
+        if self._compute_labels:
+            self._do_score_labels()
+
+        # confusion matrix is compute on demand
+        self._confusion_matrix = None
+
+
+        
         self._do_count()
+    
+    def get_labels1(self, unit_id):
+        if unit_id in self.sorting1.get_unit_ids():
+            return self._labels_st1[unit_id]
+        else:
+            raise Exception("Unit_id is not a valid unit")
+
+    def get_labels2(self, unit_id):
+        if unit_id in self.sorting1.get_unit_ids():
+            return self._labels_st1[unit_id]
+        else:
+            raise Exception("Unit_id is not a valid unit")
+
+    def _do_matching(self):
+        if self._verbose:
+            print("Matching...")
+
+
+
+
+
+        self._event_counts_1, self._event_counts_2, self._matching_event_counts_12, \
+        self._best_match_units_12, self._matching_event_counts_21, \
+        self._best_match_units_21, self._unit_map12, \
+        self._unit_map21 = do_matching(self.sorting1, self.sorting2, self._delta_frames, self._min_accuracy,
+                                       self._n_jobs)
+
+    def _do_confusion_matrix(self):
+        if self._verbose:
+            print("Computing confusion matrix...")
+        if self._labels_st1 is None:
+            self._do_score_labels()
+        self._confusion_matrix, self._st1_idxs, self._st2_idxs = do_confusion_matrix(self.sorting1, self.sorting2,
+                                                                                     self._unit_map12, self._labels_st1,
+                                                                                     self._labels_st2)
+
+    def get_confusion_matrix(self):
+        """
+        Computes the confusion matrix.
+
+        Returns
+        ------
+        confusion_matrix: np.array
+            The confusion matrix
+        st1_idxs: np.array
+            Array with order of units1 in confusion matrix
+        st2_idxs: np.array
+            Array with order of units2 in confusion matrix
+        """
+        if self._confusion_matrix is None:
+            self._do_confusion_matrix()
+        return self._confusion_matrix, self._st1_idxs, self._st2_idxs
+
 
     def _do_count(self):
         """

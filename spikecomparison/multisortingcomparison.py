@@ -1,7 +1,7 @@
 import numpy as np
 import spikeextractors as se
 from scipy.optimize import linear_sum_assignment
-from .sortingcomparison import SortingComparison
+from .symmetricsortingcomparison import SymmetricSortingComparison
 from .comparisontools import compare_spike_trains
 
 import networkx as nx
@@ -40,7 +40,7 @@ class MultiSortingComparison():
                     #     and [self._name_list[j], self._name_list[i]] not in comparison_list:
                     if verbose:
                         print("Comparing: ", self._name_list[i], " and ", self._name_list[j])
-                    comparison_[self._name_list[j]] = SortingComparison(self._sorting_list[i], self._sorting_list[j],
+                    comparison_[self._name_list[j]] = SymmetricSortingComparison(self._sorting_list[i], self._sorting_list[j],
                                                                         sorting1_name=self._name_list[i],
                                                                         sorting2_name=self._name_list[j],
                                                                         delta_time=self._delta_time,
