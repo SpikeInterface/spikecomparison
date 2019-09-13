@@ -312,171 +312,6 @@ def make_hungarian_match(sorting1, sorting2, agreement_scores, min_accuracy):
     return hungarian_match_12, hungarian_match_21
     
 
-
-#~ def do_matching(sorting1, sorting2, delta_frames, min_accuracy, n_jobs=1):
-    #~ """
-    #~ Computes the matching between 2 sorters.
-
-    #~ Parameters
-    #~ ----------
-    #~ sorting1: SortingExtractor
-        #~ The first sorting extractor
-
-    #~ sorting2: SortingExtractor
-        #~ The second sorting extractor
-
-    #~ delta_frames: int
-        #~ Number of frames to consider spikes coincident
-
-    #~ n_jobs: int
-        #~ Number of jobs to run in parallel
-
-    #~ Returns
-    #~ -------
-
-    #~ event_counts_1: dict
-        #~ Dictionary with unit as keys and number of spikes as values for sorting1
-    #~ event_counts_2: dict
-        #~ Dictionary with unit as keys and number of spikes as values for sorting2
-    #~ matching_event_counts_12: dict
-        #~ Dictionary with matching counts for each unit of sorting1 vs all units of sorting2
-    #~ best_match_units_12: dict
-        #~ Dictionary with best matched unit for each unit in sorting1
-    #~ matching_event_counts_21: dict
-        #~ Dictionary with matching counts for each unit of sorting2 vs all units of sorting1
-    #~ best_match_units_21: dict
-        #~ Dictionary with best matched unit of sorting2 for each unit in sorting1
-    #~ unit_map12: dict
-        #~ Mapped units for sorting1 to sorting2 using linear assignment. If units are not matched they are -1
-    #~ unit_map21: dict
-        #~ Mapped units for sorting2 to sorting1 using linear assignment. If units are not matched they are -1
-
-    #~ """
-    #~ event_counts_1 = dict()
-    #~ event_counts_2 = dict()
-    #~ matching_event_counts_12 = dict()
-    #~ best_match_units_12 = dict()
-    #~ matching_event_counts_21 = dict()
-    #~ best_match_units_21 = dict()
-    #~ unit_map12 = dict()
-    #~ unit_map21 = dict()
-
-    #~ unit1_ids = sorting1.get_unit_ids()
-    #~ unit2_ids = sorting2.get_unit_ids()
-    #~ N1 = len(unit1_ids)
-    #~ N2 = len(unit2_ids)
-
-    #~ # Compute events counts
-    #~ event_counts1 = np.zeros((N1)).astype(np.int64)
-    #~ for i1, u1 in enumerate(unit1_ids):
-        #~ times1 = sorting1.get_unit_spike_train(u1)
-        #~ event_counts1[i1] = len(times1)
-        #~ event_counts_1[u1] = len(times1)
-    #~ event_counts2 = np.zeros((N2)).astype(np.int64)
-    #~ for i2, u2 in enumerate(unit2_ids):
-        #~ times2 = sorting2.get_unit_spike_train(u2)
-        #~ event_counts2[i2] = len(times2)
-        #~ event_counts_2[u2] = len(times2)
-
-    #~ # Compute matching events
-    #~ s2_spiketrains = [sorting2.get_unit_spike_train(u2) for u2 in unit2_ids]
-    #~ results = Parallel(n_jobs=n_jobs)(delayed(match_spikes)(sorting1.get_unit_spike_train(u1), s2_spiketrains,
-                                                            #~ unit2_ids, delta_frames, event_counts1[i1],
-                                                            #~ event_counts2) for i1, u1 in enumerate(unit1_ids))
-
-    #~ matching_event_counts = np.zeros((N1, N2)).astype(np.int64)
-    #~ scores = np.zeros((N1, N2))
-    #~ for i1, u1 in enumerate(unit1_ids):
-        #~ matching_event_counts[i1] = results[i1][0]
-        #~ scores[i1] = results[i1][1]
-
-    #~ # Find best matches for spiketrains 1
-    #~ for i1, u1 in enumerate(unit1_ids):
-        #~ scores0 = scores[i1, :]
-        #~ matching_event_counts_12[u1] = dict()
-        #~ if len(scores0) > 0:
-            #~ if np.max(scores0) > 0:
-                #~ inds0 = np.where(scores0 > 0)[0]
-                #~ for i2 in inds0:
-                    #~ matching_event_counts_12[u1][unit2_ids[i2]] = matching_event_counts[i1, i2]
-                #~ i2_best = np.argmax(scores0)
-                #~ best_match_units_12[u1] = unit2_ids[i2_best]
-            #~ else:
-                #~ best_match_units_12[u1] = -1
-        #~ else:
-            #~ best_match_units_12[u1] = -1
-
-    #~ # Find best matches for spiketrains 2
-    #~ for i2, u2 in enumerate(unit2_ids):
-        #~ scores0 = scores[:, i2]
-        #~ matching_event_counts_21[u2] = dict()
-        #~ if len(scores0) > 0:
-            #~ if np.max(scores0) > 0:
-                #~ inds0 = np.where(scores0 > 0)[0]
-                #~ for i1 in inds0:
-                    #~ matching_event_counts_21[u2][unit1_ids[i1]] = matching_event_counts[i1, i2]
-                #~ i1_best = np.argmax(scores0)
-                #~ best_match_units_21[u2] = unit1_ids[i1_best]
-            #~ else:
-                #~ best_match_units_21[u2] = -1
-        #~ else:
-            #~ best_match_units_21[u2] = -1
-
-    #~ # Assign best matches
-    #~ [inds1, inds2] = linear_sum_assignment(-scores)
-    #~ inds1 = list(inds1)
-    #~ inds2 = list(inds2)
-    #~ if len(unit2_ids) > 0:
-        #~ k2 = np.max(unit2_ids) + 1
-    #~ else:
-        #~ k2 = 1
-    #~ for i1, u1 in enumerate(unit1_ids):
-        #~ if i1 in inds1:
-            #~ aa = inds1.index(i1)
-            #~ i2 = inds2[aa]
-            #~ u2 = unit2_ids[i2]
-            #~ # criteria on agreement_score
-            #~ num_matches = matching_event_counts_12[u1].get(u2, 0)
-            #~ num1 = event_counts_1[u1]
-            #~ num2 = event_counts_2[u2]
-            #~ agree_score = compute_agreement_score(num_matches, num1, num2)
-            #~ if agree_score > min_accuracy:
-                #~ unit_map12[u1] = u2
-            #~ else:
-                #~ unit_map12[u1] = -1
-        #~ else:
-            #~ # unit_map12[u1] = k2
-            #~ # k2 = k2+1
-            #~ unit_map12[u1] = -1
-    #~ if len(unit1_ids) > 0:
-        #~ k1 = np.max(unit1_ids) + 1
-    #~ else:
-        #~ k1 = 1
-    #~ for i2, u2 in enumerate(unit2_ids):
-        #~ if i2 in inds2:
-            #~ aa = inds2.index(i2)
-            #~ i1 = inds1[aa]
-            #~ u1 = unit1_ids[i1]
-            #~ # criteria on agreement_score
-            #~ num_matches = matching_event_counts_12[u1].get(u2, 0)
-            #~ num1 = event_counts_1[u1]
-            #~ num2 = event_counts_2[u2]
-            #~ agree_score = compute_agreement_score(num_matches, num1, num2)
-            #~ if agree_score > min_accuracy:
-                #~ unit_map21[u2] = u1
-            #~ else:
-                #~ unit_map21[u2] = -1
-        #~ else:
-            #~ # unit_map21[u2] = k1
-            #~ # k1 = k1+1
-            #~ unit_map21[u2] = -1
-
-    #~ return (event_counts_1, event_counts_2,
-            #~ matching_event_counts_12, best_match_units_12,
-            #~ matching_event_counts_21, best_match_units_21,
-            #~ unit_map12, unit_map21)
-
-
 def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclassification=False):
     """
     Makes the labelling at spike level for each spike train:
@@ -496,7 +331,7 @@ def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclass
         The tested sorting
     delta_frames: int
         Number of frames to consider spikes coincident
-    unit_map12: dict
+    unit_map12: pd.Series
         Dict of matching from sorting1 to sorting2
     label_misclassification: bool
         If True, misclassification errors are labelled
@@ -550,7 +385,7 @@ def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclass
             for l_gt, lab in enumerate(lab_st1):
                 if lab == 'UNPAIRED':
                     for u2 in unit2_ids:
-                        if u2 in unit_map12.values() and unit_map12[u1] != -1:
+                        if u2 in unit_map12.values and unit_map12[u1] != -1:
                             lab_st2 = labels_st2[u2]
                             n_sp = st1[l_gt]
                             mapped_st = sts2[u2]
@@ -620,19 +455,21 @@ def compare_spike_trains(spiketrain1, spiketrain2, delta_frames=10):
 
 def do_confusion_matrix(event_counts1, event_counts2, match_12, match_event_count):
     """
-    Computes the confusion matrix between two sorting.
+    Computes the confusion matrix between one ground truth sorting
+    and another sorting.
 
     Parameters
     ----------
     event_counts1: pd.Series
-        
+        Number of event per units 1
     event_counts2: pd.Series
-        
+        Number of event per units 2
     match_12: pd.Series
         Series of matching from sorting1 to sorting2.
         Can be the hungarian or best match.
     match_event_count: pd.DataFrame
         The match count matrix given by make_match_count_matrix
+        
     Returns
     ------
     confusion_matrix: pd.DataFrame
@@ -672,64 +509,67 @@ def do_confusion_matrix(event_counts1, event_counts2, match_12, match_event_coun
         conf_matrix.at['FP', u2] = event_counts2.at[u2]
     
     return conf_matrix
-    
-    
-    mapped_units = np.array(list(unit_map12.values()))
-    idxs_matched, = np.where(mapped_units != -1)
-    idxs_unmatched, = np.where(mapped_units == -1)
-    unit_map_matched = mapped_units[idxs_matched]
 
-    st1_idxs = np.hstack([unit1_ids[idxs_matched], unit1_ids[idxs_unmatched]])
-    st2_matched = unit_map_matched
+
+def do_count_score(event_counts1, event_counts2, match_12, match_event_count, compute_misclassification=True):
+    """
+    For each ground truth units count how many:
+    'tp', 'fn', 'cl', 'fp', 'num_gt', 'num_tested', 'tested_id'
     
+    Parameters
+    ----------
+    event_counts1: pd.Series
+        Number of event per units 1
+    event_counts2: pd.Series
+        Number of event per units 2
+    match_12: pd.Series
+        Series of matching from sorting1 to sorting2.
+        Can be the hungarian or best match.
+    match_event_count: pd.DataFrame
+        The match count matrix given by make_match_count_matrix
+    compute_misclassification: bool
+        Make the columns cl optional. 
+    Returns
+    ----------
+    count_score: pd.DataFrame
+        A table with one line per GT units and columns
+        are tp/fn/fp/...
+    """
     
+    unit1_ids = event_counts1.index
     
+    if compute_misclassification:
+        columns = ['tp', 'fn', 'cl', 'fp', 'num_gt', 'num_tested', 'tested_id']
+    else:
+        columns = ['tp', 'fn', 'fp', 'num_gt', 'num_tested', 'tested_id']
     
-    
-
-    conf_matrix = np.zeros((N1 + 1, N2 + 1), dtype=int)
-
-    mapped_units = np.array(list(unit_map12.values()))
-    idxs_matched, = np.where(mapped_units != -1)
-    idxs_unmatched, = np.where(mapped_units == -1)
-    unit_map_matched = mapped_units[idxs_matched]
-
-    st1_idxs = np.hstack([unit1_ids[idxs_matched], unit1_ids[idxs_unmatched]])
-    st2_matched = unit_map_matched
-    st2_unmatched = []
-
-    for u_i, u1 in enumerate(unit1_ids[idxs_matched]):
-        lab_st1 = labels_st1[u1]
-        tp = len(np.where('TP' == lab_st1)[0])
-        conf_matrix[u_i, u_i] = int(tp)
-        for u_j, u2 in enumerate(unit2_ids):
-            lab_st2 = labels_st2[u2]
-            cl_str = str(u1) + '_' + str(u2)
-            cl = len([i for i, v in enumerate(lab_st1) if 'CL' in v and cl_str in v])
-            if cl != 0:
-                st_p, = np.where(u2 == unit_map_matched)
-                conf_matrix[u_i, st_p] = int(cl)
-        fn = len(np.where('FN' == lab_st1)[0])
-        conf_matrix[u_i, -1] = int(fn)
-
-    for u_i, u1 in enumerate(unit1_ids[idxs_unmatched]):
-        lab_st1 = labels_st1[u1]
-        fn = len(np.where('FN' == lab_st1)[0])
-        conf_matrix[u_i + len(idxs_matched), -1] = int(fn)
-
-    for u_j, u2 in enumerate(unit2_ids):
-        lab_st2 = labels_st2[u2]
-        fp = len(np.where('FP' == lab_st2)[0])
-        st_p, = np.where(u2 == unit_map_matched)
-        if len(st_p) != 0:
-            conf_matrix[-1, st_p] = int(fp)
+    count_score = pd.DataFrame(index=unit1_ids, columns=columns)
+    count_score.index.name = 'gt_unit_id'
+    for i1, u1 in enumerate(unit1_ids):
+        u2 = match_12[u1]
+        count_score.at[u1, 'tested_id'] = u2
+        if u2 == -1:
+            count_score.at[u1, 'num_tested'] = 0
+            count_score.at[u1, 'tp'] = 0
+            count_score.at[u1, 'fp'] = 0
+            if compute_misclassification:
+                count_score.at[u1, 'cl'] = 0
+            count_score.at[u1, 'fn'] = event_counts1.at[u1]
+            count_score.at[u1, 'num_gt'] = 0
         else:
-            st2_unmatched.append(int(u2))
-            conf_matrix[-1, len(idxs_matched) + len(st2_unmatched) - 1] = int(fp)
+            num_match = match_event_count.at[u1, u2]
+            count_score.at[u1, 'tp'] = num_match
+            if compute_misclassification:
+                count_score.at[u1, 'cl'] = match_event_count.loc[u1, :].sum() - num_match
+                
+            count_score.at[u1, 'fn'] = event_counts1.at[u1] - num_match
+            count_score.at[u1, 'fp'] = event_counts2.at[u2] - num_match
+            
+            count_score.at[u1, 'num_gt'] = event_counts1.at[u1]
+            count_score.at[u1, 'num_tested'] = event_counts2.at[u2]    
 
-    st2_idxs = np.hstack([st2_matched, st2_unmatched]).astype('int64')
+    return count_score
 
-    return conf_matrix, st1_idxs, st2_idxs
 
 
 

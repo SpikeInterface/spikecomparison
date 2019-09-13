@@ -20,7 +20,7 @@ class BaseComparison:
         
         self.sorting_list = sorting_list
         if name_list is None:
-            name_list = ['sorting {}'.format(i+1) for i in range(len(sorting_list))]
+            name_list = ['sorting{}'.format(i+1) for i in range(len(sorting_list))]
         self.name_list = name_list
         
         if sampling_frequency is None:
@@ -57,9 +57,9 @@ class BaseTwoSorterComparison(BaseComparison):
         
         sorting_list = [sorting1, sorting2]
         if sorting1_name is None:
-            sorting1_name = 'sorting 1'
+            sorting1_name = 'sorting1'
         if sorting2_name is None:
-            sorting2_name = 'sorting 2'
+            sorting2_name = 'sorting2'
         name_list = [sorting1_name, sorting2_name]
         
         BaseComparison.__init__(self, sorting_list, name_list=name_list, delta_time=delta_time,

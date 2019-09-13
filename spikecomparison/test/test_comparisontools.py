@@ -3,7 +3,7 @@ import spikeextractors as se
 from numpy.testing import assert_array_equal
 from spikecomparison.comparisontools import (do_count_event, make_match_count_matrix, make_agreement_scores, 
         make_possible_match, make_best_match, make_hungarian_match, 
-        do_score_labels, do_confusion_matrix, compare_spike_trains)
+        do_score_labels, compare_spike_trains, do_confusion_matrix, do_count_score, )
 
 
 def make_sorting(times1, labels1, times2, labels2):
@@ -188,6 +188,33 @@ def test_do_confusion_matrix():
 
 
 
+def test_do_count_score():
+    delta_frames = 10
+    min_accuracy = 0.5
+    
+    # simple match
+    sorting1, sorting2 = make_sorting([100, 200, 300, 400], [0, 0, 1, 0],
+                                      [101, 201, 301, ], [0, 0, 5])
+    
+    event_counts1 = do_count_event(sorting1)
+    event_counts2 = do_count_event(sorting2)
+    match_event_count = make_match_count_matrix(sorting1, sorting2, delta_frames, n_jobs=1)
+    agreement_scores = make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1)
+    hungarian_match_12, hungarian_match_21 = make_hungarian_match(sorting1, sorting2, agreement_scores, min_accuracy)
+    
+    count_score = do_count_score(event_counts1, event_counts2, hungarian_match_12, match_event_count, compute_misclassification=True)
+    
+    # print(count_score)
+    
+    assert count_score.at[0, 'tp'] == 2
+    assert count_score.at[1, 'tp'] == 1
+    assert count_score.at[0, 'fn'] == 1
+    assert count_score.at[1, 'fn'] == 0
+    assert count_score.at[0, 'tested_id'] == 0
+    assert count_score.at[1, 'tested_id'] == 5
+    
+
+
 
 if __name__ == '__main__':
     
@@ -200,5 +227,6 @@ if __name__ == '__main__':
     
     #~ test_do_score_labels()
     #~ test_compare_spike_trains()
-    test_do_confusion_matrix()
+    #~ test_do_confusion_matrix()
+    test_do_count_score()
     

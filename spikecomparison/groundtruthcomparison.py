@@ -3,7 +3,7 @@ import pandas as pd
 
 from .basecomparison import BaseTwoSorterComparison
 from .comparisontools import (compute_agreement_score, do_score_labels, make_possible_match, 
-                make_best_match, make_hungarian_match, do_confusion_matrix)
+                make_best_match, make_hungarian_match, do_confusion_matrix, do_count_score)
 
 
 # Note for dev,  because of  BaseTwoSorterComparison internally:
@@ -40,33 +40,39 @@ class GroundTruthComparison(BaseTwoSorterComparison):
                                 delta_time=delta_time, sampling_frequency=sampling_frequency, min_accuracy=min_accuracy, n_jobs=n_jobs,
                                 verbose=verbose)
         self.exhaustive_gt = exhaustive_gt
-        self.bad_redundant_threshold = bad_redundant_threshold
+        self._bad_redundant_threshold = bad_redundant_threshold
 
         assert match_mode in ['hungarian', 'best']
         self.match_mode = match_mode
-        self.compute_labels = compute_labels
-        self.compute_misclassification = compute_misclassification
+        self._compute_labels = compute_labels
+        self._compute_misclassification = compute_misclassification
         
         
         self._do_count()
         
         self._labels_st1 = None
         self._labels_st2 = None
-        if self.compute_labels:
+        if self._compute_labels:
             self._do_score_labels()
 
         # confusion matrix is compute on demand
-        self.confusion_matrix = None
+        self._confusion_matrix = None
         
         
     
     def get_labels1(self, unit_id):
+        if self._labels_st1 is None:
+            self._do_score_labels()
+        
         if unit_id in self.sorting1.get_unit_ids():
             return self._labels_st1[unit_id]
         else:
             raise Exception("Unit_id is not a valid unit")
 
     def get_labels2(self, unit_id):
+        if self._labels_st1 is None:
+            self._do_score_labels()
+        
         if unit_id in self.sorting1.get_unit_ids():
             return self._labels_st1[unit_id]
         else:
@@ -87,40 +93,15 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         
         Internally use hugarian match or best match.
         
-        If compute_labels=True then use it otherwise make the counting.
-        
         """
         if self.match_mode == 'hungarian':
             match_12 = self.hungarian_match_12
         elif self.match_mode == 'best':
             match_12 = self.best_match_12
-        
-        
-        columns = ['tp', 'fn', 'cl', 'fp', 'num_gt', 'num_tested', 'tested_id']
-        self.count = pd.DataFrame(index=self.unit1_ids, columns=columns)
-        self.count.index.name = 'gt_unit_id'
-        for i1, u1 in enumerate(self.unit1_ids):
-            u2 = match_12[u1]
-            self.count.loc[u1, 'tested_id'] = u2
-            if u2 == -1:
-                self.count.loc[u1, 'num_tested'] = 0
-                self.count.loc[u1, 'tp'] = 0
-                self.count.loc[u1, 'fp'] = 0
-                # TODO
-                # self.count.loc[u1, 'cl'] = 0
-                self.count.loc[u1, 'fn'] = self.event_counts1.at[u1]
-                self.count.loc[u1, 'num_gt'] = 0
-            else:
-                num_match = self.match_event_count.at[u1, u2]
-                
-                self.count.loc[u1, 'tp'] = num_match
-                # TODO
-                # self.count.loc[u1, 'cl'] = sum(e.startswith('CL') for e in self._labels_st1[u1])
-                self.count.loc[u1, 'fn'] = self.event_counts1.at[u1] - num_match
-                self.count.loc[u1, 'fp'] = self.event_counts2.at[u2] - num_match
-                
-                self.count.loc[u1, 'num_gt'] = self.event_counts1.at[u1]
-                self.count.loc[u1, 'num_tested'] = self.event_counts2.at[u2]
+        self.count_score = do_count_score(self.event_counts1, self.event_counts2, 
+                            match_12, self.match_event_count,
+                            compute_misclassification=self._compute_misclassification)
+
 
     def _do_confusion_matrix(self):
         if self.verbose:
@@ -162,7 +143,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         
         self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
                                                              self.delta_frames, self.hungarian_match_12,
-                                                             self.compute_misclassification)
+                                                             self._compute_misclassification)
 
 
     def get_performance(self, method='by_unit', output='pandas'):
@@ -189,14 +170,19 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             raise Exception("'method' can be " + ' or '.join(possibles))
 
         if method == 'raw_count':
-            perf = self.count
+            perf = self.count_score
 
         elif method == 'by_unit':
             unit1_ids = self.sorting1.get_unit_ids()
             perf = pd.DataFrame(index=unit1_ids, columns=_perf_keys)
             perf.index.name = 'gt_unit_id'
-            c = self.count
-            tp, cl, fn, fp, num_gt = c['tp'], c['cl'], c['fn'], c['fp'], c['num_gt']
+            c = self.count_score
+            tp, fn, fp, num_gt = c['tp'], c['fn'], c['fp'], c['num_gt']
+            if self._compute_misclassification:
+                cl = c['cl']
+            else:
+                cl = None
+            
             perf = _compute_perf(tp, cl, fn, fp, num_gt, perf)
 
         elif method == 'pooled_with_average':
@@ -207,12 +193,12 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
         return perf
 
-    def print_performance(self, method='by_unit'):
+    def print_performance(self, method='pooled_with_average'):
         """
         Print performance with the selected method
         """
 
-        if self.compute_misclassification:
+        if self._compute_misclassification:
             template_txt_performance = _template_txt_performance_with_cl
         else:
             template_txt_performance = _template_txt_performance
@@ -327,21 +313,16 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         if bad_redundant_threshold is not None:
             self._bad_redundant_threshold = bad_redundant_threshold
 
-        best_match = list(self._unit_map12.values())
+        matched_units2 = list(self.hungarian_match_12.values)
         false_positive_ids = []
-        unit2_ids = self.sorting2.get_unit_ids()
-        for u2 in unit2_ids:
-            if u2 not in best_match:
-                if self._best_match_units_21[u2] == -1:
+        for u2 in self.unit2_ids:
+            if u2 not in matched_units2:
+                if self.best_match_21[u2] == -1:
                     false_positive_ids.append(u2)
                 else:
-                    u1 = self._best_match_units_21[u2]
-                    num_matches = self._matching_event_counts_12[u1].get(u2, 0)
-                    num1 = self._event_counts_1[u1]
-                    num2 = self._event_counts_2[u2]
-                    agree_score = compute_agreement_score(num_matches, num1, num2)
-
-                    if agree_score < self._bad_redundant_threshold:
+                    u1 = self.best_match_21[u2]
+                    score = self.agreement_scores.at[u1, u2]
+                    if score < self._bad_redundant_threshold:
                         false_positive_ids.append(u2)
 
         return false_positive_ids
@@ -371,21 +352,14 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         """
         if bad_redundant_threshold is not None:
             self._bad_redundant_threshold = bad_redundant_threshold
-        best_match = list(self._unit_map12.values())
+        matched_units2 = list(self.hungarian_match_12.values)
         redundant_ids = []
-        unit2_ids = self.sorting2.get_unit_ids()
-        for u2 in unit2_ids:
-            if u2 not in best_match and self._best_match_units_21[u2] != -1:
-                # a redundant unit is not a best match
-                u1 = self._best_match_units_21[u2]
-                if u2 != self._best_match_units_12[u1]:
-
-                    num_matches = self._matching_event_counts_12[u1].get(u2, 0)
-                    num1 = self._event_counts_1[u1]
-                    num2 = self._event_counts_2[u2]
-                    agree_score = compute_agreement_score(num_matches, num1, num2)
-
-                    if agree_score > self._bad_redundant_threshold:
+        for u2 in self.unit2_ids:
+            if u2 not in matched_units2 and self.best_match_21[u2] != -1:
+                u1 = self.best_match_21[u2]
+                if u2 != self.best_match_12[u1]:
+                    score = self.agreement_scores.at[u1, u2]
+                    if score >= self._bad_redundant_threshold:
                         redundant_ids.append(u2)
 
         return redundant_ids
@@ -408,11 +382,10 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         Need exhaustive_gt=True
         """
         assert self.exhaustive_gt, 'bad_units list is valid only if exhaustive_gt=True'
-        best_match = list(self._unit_map12.values())
+        matched_units2 = list(self.hungarian_match_12.values)
         bad_ids = []
-        unit2_ids = self.sorting2.get_unit_ids()
-        for u2 in unit2_ids:
-            if u2 not in best_match:
+        for u2 in self.unit2_ids:
+            if u2 not in matched_units2:
                 bad_ids.append(u2)
         return bad_ids
 
@@ -443,7 +416,8 @@ def _compute_perf(tp, cl, fn, fp, num_gt, perf):
     perf['precision'] = tp / (tp + fp)
     perf['false_discovery_rate'] = fp / (tp + fp)
     perf['miss_rate'] = fn / num_gt
-    perf['misclassification_rate'] = cl / num_gt
+    if cl is not None:
+        perf['misclassification_rate'] = cl / num_gt
 
     return perf
 
