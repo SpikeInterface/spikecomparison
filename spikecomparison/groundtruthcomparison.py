@@ -30,7 +30,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                  delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=0.2,
-                 n_jobs=-1, match_mode ='hungarian', compute_labels=False, compute_misclassification=True,  verbose=False):
+                 n_jobs=-1, match_mode ='hungarian', compute_labels=False, verbose=False):
 
         if gt_name is None:
             gt_name = 'ground truth'
@@ -45,8 +45,6 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         assert match_mode in ['hungarian', 'best']
         self.match_mode = match_mode
         self._compute_labels = compute_labels
-        self._compute_misclassification = compute_misclassification
-        
         
         self._do_count()
         
@@ -99,8 +97,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         elif self.match_mode == 'best':
             match_12 = self.best_match_12
         self.count_score = do_count_score(self.event_counts1, self.event_counts2, 
-                            match_12, self.match_event_count,
-                            compute_misclassification=self._compute_misclassification)
+                            match_12, self.match_event_count)
 
 
     def _do_confusion_matrix(self):
@@ -142,8 +139,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             print("Adding labels...")
         
         self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
-                                                             self.delta_frames, self.hungarian_match_12,
-                                                             self._compute_misclassification)
+                                                             self.delta_frames, self.hungarian_match_12, True)
 
 
     def get_performance(self, method='by_unit', output='pandas'):
@@ -178,12 +174,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             perf.index.name = 'gt_unit_id'
             c = self.count_score
             tp, fn, fp, num_gt = c['tp'], c['fn'], c['fp'], c['num_gt']
-            if self._compute_misclassification:
-                cl = c['cl']
-            else:
-                cl = None
-            
-            perf = _compute_perf(tp, cl, fn, fp, num_gt, perf)
+            perf = _compute_perf(tp, fn, fp, num_gt, perf)
 
         elif method == 'pooled_with_average':
             perf = self.get_performance(method='by_unit').mean(axis=0)
@@ -198,10 +189,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         Print performance with the selected method
         """
 
-        if self._compute_misclassification:
-            template_txt_performance = _template_txt_performance_with_cl
-        else:
-            template_txt_performance = _template_txt_performance
+        template_txt_performance = _template_txt_performance
 
         if method == 'by_unit':
             perf = self.get_performance(method=method, output='pandas')
@@ -254,7 +242,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         accuracy above 0.95 are selected.
         
         For some thresholds columns units are below the threshold for instance
-        'miss_rate', 'false_discovery_rate', 'misclassification_rate'
+        'miss_rate', 'false_discovery_rate'
         
         If several thresh are given the the intersect of selection is kept.
         
@@ -270,7 +258,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             thresholds = {'accuracy': 0.95}
 
         _above = ['accuracy', 'recall', 'precision']
-        _below = ['false_discovery_rate', 'miss_rate', 'misclassification_rate']
+        _below = ['false_discovery_rate', 'miss_rate']
 
         perf = self.get_performance(method='by_unit')
         keep = perf['accuracy'] >= 0  # tale all
@@ -396,7 +384,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         return len(self.get_bad_units())
 
 
-def _compute_perf(tp, cl, fn, fp, num_gt, perf):
+def _compute_perf(tp, fn, fp, num_gt, perf):
     """
     This compte perf formula.
     this trick here is that it works both on pd.Series and pd.Dataframe
@@ -416,18 +404,14 @@ def _compute_perf(tp, cl, fn, fp, num_gt, perf):
     perf['precision'] = tp / (tp + fp)
     perf['false_discovery_rate'] = fp / (tp + fp)
     perf['miss_rate'] = fn / num_gt
-    if cl is not None:
-        perf['misclassification_rate'] = cl / num_gt
-
     return perf
 
 
 # usefull also for gathercomparison
-_perf_keys = ['accuracy', 'recall', 'precision', 'false_discovery_rate', 'miss_rate', 'misclassification_rate']
+_perf_keys = ['accuracy', 'recall', 'precision', 'false_discovery_rate', 'miss_rate']
 
-_template_txt_performance = """PERFORMANCE
-Method : {method}
-
+_template_txt_performance = """PERFORMANCE ({method})
+-----------
 ACCURACY: {accuracy}
 RECALL: {recall}
 PRECISION: {precision}
@@ -435,9 +419,9 @@ FALSE DISCOVERY RATE: {false_discovery_rate}
 MISS RATE: {miss_rate}
 """
 
-_template_txt_performance_with_cl = _template_txt_performance + 'MISS CLASSIFICATION RATE: {misclassification_rate}\n'
 
 _template_summary_part1 = """SUMMARY
+-------
 GT num_units: {num_gt}
 TESTED num_units: {num_tested}
 num_well_detected: {num_well_detected} 
@@ -451,8 +435,7 @@ num_bad: {num_bad}
 
 def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                                    delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True, match_mode='hungarian', 
-                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=True,
-                                   compute_misclassification=False, verbose=False):
+                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=True, verbose=False):
     '''
     Compares a sorter to a ground truth.
 
@@ -491,8 +474,6 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
         which is considered 'redundant' (default 0.2)
     compute_labels: bool
         If True, labels are computed at instantiation (default True)
-    compute_misclassification: bool
-        If True, misclassification errors are computed (default False)
     verbose: bool
         If True, output is verbose
     Returns
@@ -505,4 +486,4 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
                                  tested_name=tested_name, delta_time=delta_time, sampling_frequency=sampling_frequency,
                                  min_accuracy=min_accuracy, exhaustive_gt=exhaustive_gt, n_jobs=n_jobs, match_mode='hungarian', 
                                  compute_labels=compute_labels, bad_redundant_threshold=bad_redundant_threshold,
-                                 compute_misclassification=compute_misclassification, verbose=verbose)
+                                 verbose=verbose)

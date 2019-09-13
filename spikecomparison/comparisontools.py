@@ -511,7 +511,7 @@ def do_confusion_matrix(event_counts1, event_counts2, match_12, match_event_coun
     return conf_matrix
 
 
-def do_count_score(event_counts1, event_counts2, match_12, match_event_count, compute_misclassification=True):
+def do_count_score(event_counts1, event_counts2, match_12, match_event_count):
     """
     For each ground truth units count how many:
     'tp', 'fn', 'cl', 'fp', 'num_gt', 'num_tested', 'tested_id'
@@ -527,8 +527,6 @@ def do_count_score(event_counts1, event_counts2, match_12, match_event_count, co
         Can be the hungarian or best match.
     match_event_count: pd.DataFrame
         The match count matrix given by make_match_count_matrix
-    compute_misclassification: bool
-        Make the columns cl optional. 
     Returns
     ----------
     count_score: pd.DataFrame
@@ -538,10 +536,7 @@ def do_count_score(event_counts1, event_counts2, match_12, match_event_count, co
     
     unit1_ids = event_counts1.index
     
-    if compute_misclassification:
-        columns = ['tp', 'fn', 'cl', 'fp', 'num_gt', 'num_tested', 'tested_id']
-    else:
-        columns = ['tp', 'fn', 'fp', 'num_gt', 'num_tested', 'tested_id']
+    columns = ['tp', 'fn', 'fp', 'num_gt', 'num_tested', 'tested_id']
     
     count_score = pd.DataFrame(index=unit1_ids, columns=columns)
     count_score.index.name = 'gt_unit_id'
@@ -552,16 +547,11 @@ def do_count_score(event_counts1, event_counts2, match_12, match_event_count, co
             count_score.at[u1, 'num_tested'] = 0
             count_score.at[u1, 'tp'] = 0
             count_score.at[u1, 'fp'] = 0
-            if compute_misclassification:
-                count_score.at[u1, 'cl'] = 0
             count_score.at[u1, 'fn'] = event_counts1.at[u1]
             count_score.at[u1, 'num_gt'] = 0
         else:
             num_match = match_event_count.at[u1, u2]
             count_score.at[u1, 'tp'] = num_match
-            if compute_misclassification:
-                count_score.at[u1, 'cl'] = match_event_count.loc[u1, :].sum() - num_match
-                
             count_score.at[u1, 'fn'] = event_counts1.at[u1] - num_match
             count_score.at[u1, 'fp'] = event_counts2.at[u2] - num_match
             

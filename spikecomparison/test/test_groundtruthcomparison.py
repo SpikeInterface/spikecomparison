@@ -21,13 +21,10 @@ def test_compare_sorter_to_ground_truth():
     
     for match_mode in ('hungarian', 'best'):
         
-        if match_mode == 'hungarian':
-            compute_misclassification = True
-        elif match_mode == 'best':
-            compute_misclassification = False
+        compute_labels = (match_mode=='hungarian')
         
         sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True,
-                        match_mode=match_mode, compute_misclassification=compute_misclassification)
+                        match_mode=match_mode, compute_labels=compute_labels)
     
         assert_array_equal(sc.event_counts1.values, [3, 3])
         assert_array_equal(sc.event_counts2.values, [3, 2, 2, 1])
@@ -57,7 +54,7 @@ def test_compare_sorter_to_ground_truth():
         sc.print_summary()
 
     sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True,
-                    match_mode='hungarian', compute_misclassification=True)
+                    match_mode='hungarian')
 
     
     # test well detected units depending on thresholds
@@ -69,8 +66,6 @@ def test_compare_sorter_to_ground_truth():
     assert_array_equal(good_units, [0, 1])
     good_units = sc.get_well_detected_units(false_discovery_rate=0.05)
     assert_array_equal(good_units, [0, 1])
-    good_units = sc.get_well_detected_units(misclassification_rate=0.05)
-    assert_array_equal(good_units, [0, ])
     good_units = sc.get_well_detected_units(accuracy=0.95, false_discovery_rate=.05)  # combine thresh
     assert_array_equal(good_units, [0])
 
@@ -106,7 +101,7 @@ def test_get_performance():
     gt_sorting, tested_sorting = make_sorting([100, 200, 300, 400], [0, 0, 1, 0],
                                               [101, 201, 301, ], [0, 0, 5])
     sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True,
-                                                                        delta_time=0.3, compute_misclassification=True)
+                                                                        delta_time=0.3)
 
     perf = sc.get_performance('raw_count')
     assert perf.loc[0, 'tp'] == 2
@@ -122,19 +117,16 @@ def test_get_performance():
     perf = sc.get_performance('by_unit')
     
     assert perf.loc[0, 'accuracy'] == 2 / 3.
-    assert perf.loc[0, 'misclassification_rate'] == 0
     assert perf.loc[0, 'miss_rate'] == 1 / 3.
 
     ######
     # match when 2 units fire at same time
     gt_sorting, tested_sorting = make_sorting([100, 100, 200, 200, 300], [0, 1, 0, 1, 0],
                                               [100, 100, 200, 200, 300], [0, 1, 0, 1, 0], )
-    sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True, compute_misclassification=True)
+    sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True)
 
     perf = sc.get_performance('raw_count')
-    print(perf)
     assert perf.loc[0, 'tp'] == 3
-    assert perf.loc[0, 'cl'] == 0
     assert perf.loc[0, 'fn'] == 0
     assert perf.loc[0, 'fp'] == 0
     assert perf.loc[0, 'num_gt'] == 3
@@ -146,5 +138,5 @@ def test_get_performance():
 
 
 if __name__ == '__main__':
-    #~ test_compare_sorter_to_ground_truth()
+    test_compare_sorter_to_ground_truth()
     test_get_performance()

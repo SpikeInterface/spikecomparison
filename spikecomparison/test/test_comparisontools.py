@@ -202,7 +202,7 @@ def test_do_count_score():
     agreement_scores = make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1)
     hungarian_match_12, hungarian_match_21 = make_hungarian_match(sorting1, sorting2, agreement_scores, min_accuracy)
     
-    count_score = do_count_score(event_counts1, event_counts2, hungarian_match_12, match_event_count, compute_misclassification=True)
+    count_score = do_count_score(event_counts1, event_counts2, hungarian_match_12, match_event_count)
     
     # print(count_score)
     
