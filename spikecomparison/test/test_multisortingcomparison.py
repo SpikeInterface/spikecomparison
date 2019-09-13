@@ -29,7 +29,7 @@ def test_compare_multiple_sorters():
                                                 [101, 201, 301, 400, 500, 600, 700, 800, 900, 1000, 1100, 2000, 3000,
                                                  3100, 3200, 3300],
                                                 [0, 1, 2, 0, 1, 2, 0, 1, 2, 3, 3, 4, 4, 5, 5, 5],)
-    msc = compare_multiple_sorters([sorting1, sorting2, sorting3])
+    msc = compare_multiple_sorters([sorting1, sorting2, sorting3], verbose=True)
     msc_shuffle = compare_multiple_sorters([sorting3, sorting1, sorting2])
 
     agr = msc._do_agreement_matrix()
