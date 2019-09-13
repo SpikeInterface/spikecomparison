@@ -117,13 +117,13 @@ class MultiSortingComparison(BaseComparison):
                     node2_name = str(comp.sorting2_name) + '_' + str(u2)
                     score = comp.agreement_scores.loc[u1, u2]
                     graph.add_edge(node1_name, node2_name, weight=score)
-        self.graph = graph.to_undirected()
-            
         
+        # the graph is symetrical
+        graph = graph.to_undirected()    # HERE this fix the bug
         
+        # as an attribute
+        self.graph = graph
         
-
-
         # extract agrrement from graph
         if self._verbose:
             print('multicomaprison step3 : extract agreement from graph')
@@ -134,7 +134,7 @@ class MultiSortingComparison(BaseComparison):
         unit_id = 0
 
         for n in self.graph.nodes():
-            edges = graph.edges(n, data=True)
+            edges = graph.edges(n, data=True)  # HERE a bug
             sorter, unit = (str(n)).split('_')
             unit = int(unit)
             if len(edges) == 0:

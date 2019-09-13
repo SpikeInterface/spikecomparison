@@ -90,6 +90,8 @@ class BaseTwoSorterComparison(BaseComparison):
         return self.name_list[1]
     
     def _do_agreement(self):
+        if self._verbose:
+            print('Agreement scores...')
         # common to GroundTruthComparison and SymmetricSortingComparison
         # because it is symetric
         
