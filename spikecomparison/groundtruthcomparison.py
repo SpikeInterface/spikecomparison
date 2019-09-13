@@ -3,7 +3,7 @@ import pandas as pd
 
 from .basecomparison import BaseTwoSorterComparison
 from .comparisontools import (compute_agreement_score, do_score_labels, make_possible_match, 
-                make_best_match, make_hungarian_match, do_confusion_matrix, do_count_score)
+                make_best_match, make_hungarian_match, do_confusion_matrix, do_count_score, compute_performence)
 
 
 # Note for dev,  because of  BaseTwoSorterComparison internally:
@@ -169,12 +169,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             perf = self.count_score
 
         elif method == 'by_unit':
-            unit1_ids = self.sorting1.get_unit_ids()
-            perf = pd.DataFrame(index=unit1_ids, columns=_perf_keys)
-            perf.index.name = 'gt_unit_id'
-            c = self.count_score
-            tp, fn, fp, num_gt = c['tp'], c['fn'], c['fp'], c['num_gt']
-            perf = _compute_perf(tp, fn, fp, num_gt, perf)
+            perf = compute_performence(self.count_score)
 
         elif method == 'pooled_with_average':
             perf = self.get_performance(method='by_unit').mean(axis=0)
@@ -384,31 +379,9 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         return len(self.get_bad_units())
 
 
-def _compute_perf(tp, fn, fp, num_gt, perf):
-    """
-    This compte perf formula.
-    this trick here is that it works both on pd.Series and pd.Dataframe
-    line by line.
-    This it is internally used by perf by psiketrain and poll_with_sum.
-    
-    https://en.wikipedia.org/wiki/Sensitivity_and_specificity
-    
-    Note :
-      * we don't have TN because it do not make sens here.
-      * 'accuracy' = 'tp_rate' because TN=0
-      * 'recall' = 'sensitivity'
-    """
-
-    perf['accuracy'] = tp / (tp + fn + fp)
-    perf['recall'] = tp / (tp + fn)
-    perf['precision'] = tp / (tp + fp)
-    perf['false_discovery_rate'] = fp / (tp + fp)
-    perf['miss_rate'] = fn / num_gt
-    return perf
-
 
 # usefull also for gathercomparison
-_perf_keys = ['accuracy', 'recall', 'precision', 'false_discovery_rate', 'miss_rate']
+
 
 _template_txt_performance = """PERFORMANCE ({method})
 -----------

@@ -24,8 +24,8 @@ from spikesorters.sorterlist import sorter_dict
 
 # TODO change this when sorters will be remove from toolkit
 from spikesorters import run_sorters, iter_output_folders, iter_sorting_output
-
-from .groundtruthcomparison import compare_sorter_to_ground_truth, _perf_keys
+from .comparisontools import _perf_keys
+from .groundtruthcomparison import compare_sorter_to_ground_truth
 
 
 def setup_comparison_study(study_folder, gt_dict):

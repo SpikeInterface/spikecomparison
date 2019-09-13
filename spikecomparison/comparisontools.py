@@ -561,5 +561,40 @@ def do_count_score(event_counts1, event_counts2, match_12, match_event_count):
     return count_score
 
 
+_perf_keys = ['accuracy', 'recall', 'precision', 'false_discovery_rate', 'miss_rate']
+
+def compute_performence(count_score):
+    """
+    This compte perf formula.
+    this trick here is that it works both on pd.Series and pd.Dataframe
+    line by line.
+    This it is internally used by perf by psiketrain and poll_with_sum.
+    
+    https://en.wikipedia.org/wiki/Sensitivity_and_specificity
+    
+    Note :
+      * we don't have TN because it do not make sens here.
+      * 'accuracy' = 'tp_rate' because TN=0
+      * 'recall' = 'sensitivity'
+    """
+
+
+    perf = pd.DataFrame(index=count_score.index, columns=_perf_keys)
+    perf.index.name = 'gt_unit_id'
+    
+    # make it robust when num_gt is 0
+    keep = count_score['num_gt'] > 0
+    
+    c = count_score.loc[keep]
+    tp, fn, fp, num_gt = c['tp'], c['fn'], c['fp'], c['num_gt']
+
+    perf.loc[keep, 'accuracy'] = tp / (tp + fn + fp)
+    perf.loc[keep, 'recall'] = tp / (tp + fn)
+    perf.loc[keep, 'precision'] = tp / (tp + fp)
+    perf.loc[keep, 'false_discovery_rate'] = fp / (tp + fp)
+    perf.loc[keep, 'miss_rate'] = fn / num_gt
+    
+    return perf
+
 
 
