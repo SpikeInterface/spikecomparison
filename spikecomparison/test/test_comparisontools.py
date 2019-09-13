@@ -59,7 +59,7 @@ def test_make_possible_match():
     
     agreement_scores = make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1)
     
-    possible_match_12, possible_match_21 = make_possible_match(sorting1, sorting2, agreement_scores.values, min_accuracy)
+    possible_match_12, possible_match_21 = make_possible_match(agreement_scores, min_accuracy)
 
     # print(possible_match_12)
     # print(possible_match_21)
@@ -82,7 +82,7 @@ def test_make_best_match():
     
     agreement_scores = make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1)
     
-    best_match_12, best_match_21 = make_best_match(sorting1, sorting2, agreement_scores.values, min_accuracy)
+    best_match_12, best_match_21 = make_best_match(agreement_scores, min_accuracy)
 
     # print(best_match_12)
     # print(best_match_21)
@@ -104,10 +104,10 @@ def test_make_hungarian_match():
     
     agreement_scores = make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1)
     
-    hungarian_match_12, hungarian_match_21 = make_hungarian_match(sorting1, sorting2, agreement_scores.values, min_accuracy)
+    hungarian_match_12, hungarian_match_21 = make_hungarian_match(agreement_scores, min_accuracy)
 
-    # print(hungarian_match_12)
-    # print(hungarian_match_21)
+    # print(hungarian_match_12)
+    # print(hungarian_match_21)
 
     assert hungarian_match_12[0] == 0
     assert hungarian_match_12[1] == 5
@@ -228,12 +228,12 @@ if __name__ == '__main__':
     #~ test_make_match_count_matrix()
     #~ test_make_agreement_scores()
     
-    #~ test_make_possible_match()
-    #~ test_make_best_match()
-    #~ test_make_hungarian_match()
+    test_make_possible_match()
+    test_make_best_match()
+    test_make_hungarian_match()
     
     #~ test_do_score_labels()
     #~ test_compare_spike_trains()
     #~ test_do_confusion_matrix()
-    test_do_count_score_and_perf()
+    #~ test_do_count_score_and_perf()
     

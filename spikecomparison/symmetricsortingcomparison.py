@@ -19,9 +19,9 @@ class SymmetricSortingComparison(BaseTwoSorterComparison):
         if self._verbose:
             print("Matching...")
 
-        self.possible_match_12, self.possible_match_21 = make_possible_match(self.sorting1, self.sorting2, self.agreement_scores.values, self.min_accuracy)
-        self.best_match_12, self.best_match_21 = make_best_match(self.sorting1, self.sorting2, self.agreement_scores.values, self.min_accuracy)
-        self.hungarian_match_12, self.hungarian_match_21 = make_hungarian_match(self.sorting1, self.sorting2, self.agreement_scores.values, self.min_accuracy)
+        self.possible_match_12, self.possible_match_21 = make_possible_match(self.agreement_scores, self.min_accuracy)
+        self.best_match_12, self.best_match_21 = make_best_match(self.agreement_scores, self.min_accuracy)
+        self.hungarian_match_12, self.hungarian_match_21 = make_hungarian_match(self.agreement_scores, self.min_accuracy)
 
     def get_mapped_sorting1(self):
         """

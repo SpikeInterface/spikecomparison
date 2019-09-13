@@ -215,20 +215,34 @@ def make_agreement_scores_from_count(match_event_count, event_counts1, event_cou
     return agreement_scores
 
 
-def make_possible_match(sorting1, sorting2, agreement_scores, min_accuracy):
+def make_possible_match(agreement_scores, min_accuracy):
     """
     Given an agreement matrix and a min_accuracy threhold.
     Return as a dict all possible match for each spiketrain in each side.
     
     Note : this is symmetric.
     
+
+    Parameters
+    ----------
+    agreement_scores: pd.DataFrame
+    
+    min_accuracy: float
+    
+    
+    Returns
+    -----------
+    best_match_12: pd.Series
+    
+    best_match_21: pd.Series    
+    
     """
-    unit1_ids = np.array(sorting1.get_unit_ids())
-    unit2_ids = np.array(sorting2.get_unit_ids())
+    unit1_ids = np.array(agreement_scores.index)
+    unit2_ids = np.array(agreement_scores.columns)
     
     # threhold the matrix
-    scores = agreement_scores.copy()
-    scores[agreement_scores<min_accuracy] =0
+    scores = agreement_scores.values.copy()
+    scores[scores<min_accuracy] = 0
     
     possible_match_12 =  {}
     for i1, u1 in enumerate(unit1_ids):
@@ -245,30 +259,45 @@ def make_possible_match(sorting1, sorting2, agreement_scores, min_accuracy):
     
     
 
-def make_best_match(sorting1, sorting2, agreement_scores, min_accuracy):
+def make_best_match(agreement_scores, min_accuracy):
     """
     Given an agreement matrix and a min_accuracy threhold.
     return a dict a best match for each units independently of others.
     
     Note : this is symmetric.
+
+    Parameters
+    ----------
+    agreement_scores: pd.DataFrame
+    
+    min_accuracy: float
+    
+    
+    Returns
+    -----------
+    best_match_12: pd.Series
+    
+    best_match_21: pd.Series
     
     
     """
-    unit1_ids = np.array(sorting1.get_unit_ids())
-    unit2_ids = np.array(sorting2.get_unit_ids())
+    unit1_ids = np.array(agreement_scores.index)
+    unit2_ids = np.array(agreement_scores.columns)
+    
+    scores = agreement_scores.values.copy()
 
     best_match_12 = pd.Series(index=unit1_ids, dtype='int64')
     for i1, u1 in enumerate(unit1_ids):
-        ind_max = np.argmax(agreement_scores[i1, :])
-        if agreement_scores[i1, ind_max] >= min_accuracy:
+        ind_max = np.argmax(scores[i1, :])
+        if scores[i1, ind_max] >= min_accuracy:
             best_match_12[u1] = unit2_ids[ind_max]
         else:
             best_match_12[u1] = -1
 
     best_match_21 = pd.Series(index=unit2_ids, dtype='int64')
     for i2, u2 in enumerate(unit2_ids):
-        ind_max = np.argmax(agreement_scores[:, i2])
-        if agreement_scores[ind_max, i2] >= min_accuracy:
+        ind_max = np.argmax(scores[:, i2])
+        if scores[ind_max, i2] >= min_accuracy:
             best_match_21[u2] = unit1_ids[ind_max]
         else:
             best_match_21[u2] = -1
@@ -276,39 +305,47 @@ def make_best_match(sorting1, sorting2, agreement_scores, min_accuracy):
     return best_match_12, best_match_21
 
     
-def make_hungarian_match(sorting1, sorting2, agreement_scores, min_accuracy):
+def make_hungarian_match(agreement_scores, min_accuracy):
     """
     Given an agreement matrix and a min_accuracy threhold.
     return the "optimal" match with the "hungarian" algo.
     This use internally the scipy.optimze.linear_sum_assignment implementation.
     
+    Parameters
+    ----------
+    agreement_scores: pd.DataFrame
+    
+    min_accuracy: float
+    
+    
+    Returns
+    -----------
+    hungarian_match_12: pd.Series
+    
+    hungarian_match_21: pd.Series
+    
     """
-
-    unit1_ids = sorting1.get_unit_ids()
-    unit2_ids = sorting2.get_unit_ids()
+    unit1_ids = np.array(agreement_scores.index)
+    unit2_ids = np.array(agreement_scores.columns)
 
     # threhold the matrix
-    scores = agreement_scores.copy()
-    scores[agreement_scores<min_accuracy] =0
+    scores = agreement_scores.values.copy()
+    scores[scores<min_accuracy] =0
     
     [inds1, inds2] = linear_sum_assignment(-scores)
     
     hungarian_match_12 =  pd.Series(index=unit1_ids, dtype='int64')
-    for i1, u1 in enumerate(unit1_ids):
-        if i1 in inds1:
-            ind = np.nonzero(inds1==i1)[0][0]
-            hungarian_match_12[u1] = unit2_ids[inds2[ind]]
-        else:
-            hungarian_match_12[u1] = -1
-    
+    hungarian_match_12[:] = -1
     hungarian_match_21 =  pd.Series(index=unit2_ids, dtype='int64')
-    for i2, u2 in enumerate(unit2_ids):
-        if i2 in inds2:
-            ind = np.nonzero(inds2==i2)[0][0]
-            hungarian_match_21[u2] = unit1_ids[inds1[ind]]
-        else:
-            hungarian_match_21[u2] = -1
+    hungarian_match_21[:] = -1
     
+    for i1, i2 in zip(inds1, inds2):
+        u1 = unit1_ids[i1]
+        u2 = unit2_ids[i2]
+        if agreement_scores.at[u1, u2] >= min_accuracy:
+            hungarian_match_12[u1] = u2
+            hungarian_match_21[u2] = u1
+            
     return hungarian_match_12, hungarian_match_21
     
 
