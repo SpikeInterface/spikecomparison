@@ -101,13 +101,13 @@ class MultiSortingComparison(BaseComparison):
         #~ self.agreement = agreement
         #~ self.graph = graph.to_undirected()
         
-        graph = nx.Graph()
+        self.graph = nx.Graph()
         # nodes
         for i, sorting in enumerate(self.sorting_list):
             sorter_name = self.name_list[i]
             for unit in sorting.get_unit_ids():
                 node_name = str(sorter_name) + '_' + str(unit)
-                graph.add_node(node_name)
+                self.graph.add_node(node_name)
         # edges
         for comp in self.comparisons:
             for u1 in comp.sorting1.get_unit_ids():
@@ -116,13 +116,10 @@ class MultiSortingComparison(BaseComparison):
                     node1_name = str(comp.sorting1_name) + '_' + str(u1)
                     node2_name = str(comp.sorting2_name) + '_' + str(u2)
                     score = comp.agreement_scores.loc[u1, u2]
-                    graph.add_edge(node1_name, node2_name, weight=score)
+                    self.graph.add_edge(node1_name, node2_name, weight=score)
         
         # the graph is symetrical
-        graph = graph.to_undirected()    # HERE this fix the bug
-        
-        # as an attribute
-        self.graph = graph
+        self.graph = self.graph.to_undirected()
         
         # extract agrrement from graph
         if self._verbose:
@@ -132,10 +129,11 @@ class MultiSortingComparison(BaseComparison):
         self._spiketrains = []
         added_nodes = []
         unit_id = 0
-
-        for n in self.graph.nodes():
-            edges = graph.edges(n, data=True)  # HERE a bug
-            sorter, unit = (str(n)).split('_')
+        
+        # Note in this graph node=one unit for one sorter
+        for node in self.graph.nodes():
+            edges = self.graph.edges(node, data=True)
+            sorter, unit = (str(node)).split('_')
             unit = int(unit)
             if len(edges) == 0:
                 avg_agr = 0
@@ -143,16 +141,18 @@ class MultiSortingComparison(BaseComparison):
                 self._new_units[unit_id] = {'avg_agreement': avg_agr,
                                             'sorter_unit_ids': sorting_idxs}
                 unit_id += 1
-                added_nodes.append(str(n))
+                added_nodes.append(str(node))
             else:
                 # check if other nodes have edges (we should also check edges of
                 all_edges = list(edges)
                 for e in edges:
+                    # Note for alessio n1>node1 n2>node2 e>edge
                     n1, n2, d = e
                     n2_edges = self.graph.edges(n2, data=True)
-                    if len(n2_edges) > 0:
+                    if len(n2_edges) > 0: # useless line if
                         for e_n in n2_edges:
                             n_n1, n_n2, d = e_n
+                            # Note for alessio  why do do you sorter each elements in the all_edges ?
                             if sorted([n_n1, n_n2]) not in [sorted([u, v]) for u, v, _ in all_edges]:
                                 all_edges.append(e_n)
                 avg_agr = np.mean([d['weight'] for u, v, d in all_edges])
@@ -176,7 +176,7 @@ class MultiSortingComparison(BaseComparison):
                                     full_sorting_idxs[s] = u
                             self._new_units[unit_id] = {'avg_agreement': avg_agr,
                                                         'sorter_unit_ids': full_sorting_idxs}
-                        added_nodes.append(str(n))
+                        added_nodes.append(str(node))
                         if n1 not in added_nodes:
                             added_nodes.append(str(n1))
                         if n2 not in added_nodes:
