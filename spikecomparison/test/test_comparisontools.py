@@ -164,7 +164,7 @@ def test_do_confusion_matrix():
     event_counts2 = do_count_event(sorting2)
     match_event_count = make_match_count_matrix(sorting1, sorting2, delta_frames, n_jobs=1)
     agreement_scores = make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1)
-    hungarian_match_12, hungarian_match_21 = make_hungarian_match(sorting1, sorting2, agreement_scores, min_accuracy)
+    hungarian_match_12, hungarian_match_21 = make_hungarian_match(agreement_scores, min_accuracy)
     
     confusion = do_confusion_matrix(event_counts1, event_counts2, hungarian_match_12, match_event_count)
     
@@ -179,7 +179,7 @@ def test_do_confusion_matrix():
     event_counts2 = do_count_event(sorting2)
     match_event_count = make_match_count_matrix(sorting1, sorting2, delta_frames, n_jobs=1)
     agreement_scores = make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1)
-    hungarian_match_12, hungarian_match_21 = make_hungarian_match(sorting1, sorting2, agreement_scores, min_accuracy)
+    hungarian_match_12, hungarian_match_21 = make_hungarian_match(agreement_scores, min_accuracy)
     
     confusion = do_confusion_matrix(event_counts1, event_counts2, hungarian_match_12, match_event_count)
     
@@ -200,7 +200,7 @@ def test_do_count_score_and_perf():
     event_counts2 = do_count_event(sorting2)
     match_event_count = make_match_count_matrix(sorting1, sorting2, delta_frames, n_jobs=1)
     agreement_scores = make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1)
-    hungarian_match_12, hungarian_match_21 = make_hungarian_match(sorting1, sorting2, agreement_scores, min_accuracy)
+    hungarian_match_12, hungarian_match_21 = make_hungarian_match(agreement_scores, min_accuracy)
     
     count_score = do_count_score(event_counts1, event_counts2, hungarian_match_12, match_event_count)
     
@@ -225,15 +225,15 @@ def test_do_count_score_and_perf():
 
 if __name__ == '__main__':
     
-    #~ test_make_match_count_matrix()
-    #~ test_make_agreement_scores()
+    test_make_match_count_matrix()
+    test_make_agreement_scores()
     
     test_make_possible_match()
     test_make_best_match()
     test_make_hungarian_match()
     
-    #~ test_do_score_labels()
-    #~ test_compare_spike_trains()
-    #~ test_do_confusion_matrix()
-    #~ test_do_count_score_and_perf()
+    test_do_score_labels()
+    test_compare_spike_trains()
+    test_do_confusion_matrix()
+    test_do_count_score_and_perf()
     
