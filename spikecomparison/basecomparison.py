@@ -43,8 +43,8 @@ class BaseComparison:
         self.delta_time = delta_time
         self.delta_frames = int(self.delta_time / 1000 * self.sampling_frequency)
         self.min_accuracy = min_accuracy
-        self.n_jobs = n_jobs
-        self.verbose = verbose
+        self._n_jobs = n_jobs
+        self._verbose = verbose
     
 
 
@@ -98,7 +98,7 @@ class BaseTwoSorterComparison(BaseComparison):
         self.event_counts2 = do_count_event(self.sorting2)
 
         # matrix of  event match count for each pair
-        self.match_event_count = make_match_count_matrix(self.sorting1, self.sorting2, self.delta_frames, n_jobs=self.n_jobs)
+        self.match_event_count = make_match_count_matrix(self.sorting1, self.sorting2, self.delta_frames, n_jobs=self._n_jobs)
         
         # agreement matrix score for each pair
         self.agreement_scores = make_agreement_scores_from_count(self.match_event_count, self.event_counts1, self.event_counts2)

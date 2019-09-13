@@ -16,7 +16,7 @@ class SymmetricSortingComparison(BaseTwoSorterComparison):
             delta_time=delta_time, sampling_frequency=sampling_frequency, min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
 
     def _do_matching(self):
-        if self.verbose:
+        if self._verbose:
             print("Matching...")
 
         self.possible_match_12, self.possible_match_21 = make_possible_match(self.sorting1, self.sorting2, self.agreement_scores.values, self.min_accuracy)

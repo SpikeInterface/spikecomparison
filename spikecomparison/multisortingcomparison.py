@@ -41,11 +41,11 @@ class MultiSortingComparison(BaseComparison):
                                                                         delta_time=self.delta_time,
                                                                         sampling_frequency=self.sampling_frequency,
                                                                         min_accuracy=self.min_accuracy,
-                                                                        n_jobs=self.n_jobs,
+                                                                        n_jobs=self._n_jobs,
                                                                         verbose=verbose)
                     comparison_list.append([self.name_list[i], self.name_list[j]])
             self.sorting_comparisons[self.name_list[i]] = comparison_
-        if self.verbose:
+        if self._verbose:
             print('Comparison list:', comparison_list)
 
         # create graph

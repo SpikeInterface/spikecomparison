@@ -77,7 +77,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             raise Exception("Unit_id is not a valid unit")
 
     def _do_matching(self):
-        if self.verbose:
+        if self._verbose:
             print("Matching...")
 
         self.possible_match_12, self.possible_match_21 = make_possible_match(self.sorting1, self.sorting2, self.agreement_scores.values, self.min_accuracy)
@@ -101,7 +101,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
 
     def _do_confusion_matrix(self):
-        if self.verbose:
+        if self._verbose:
             print("Computing confusion matrix...")
 
         if self.match_mode == 'hungarian':
@@ -135,7 +135,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         assert self.match_mode == 'hungarian',\
                     'Labels (TP, FP, FN) can be computed only with hungarian match'            
 
-        if self.verbose:
+        if self._verbose:
             print("Adding labels...")
         
         self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
