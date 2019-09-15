@@ -585,7 +585,7 @@ def do_count_score(event_counts1, event_counts2, match_12, match_event_count):
             count_score.at[u1, 'tp'] = 0
             count_score.at[u1, 'fp'] = 0
             count_score.at[u1, 'fn'] = event_counts1.at[u1]
-            count_score.at[u1, 'num_gt'] = 0
+            count_score.at[u1, 'num_gt'] = event_counts1.at[u1]
         else:
             num_match = match_event_count.at[u1, u2]
             count_score.at[u1, 'tp'] = num_match
@@ -618,9 +618,10 @@ def compute_performence(count_score):
 
     perf = pd.DataFrame(index=count_score.index, columns=_perf_keys)
     perf.index.name = 'gt_unit_id'
+    perf[:] = 0
     
     # make it robust when num_gt is 0
-    keep = count_score['num_gt'] > 0
+    keep = (count_score['num_gt'] > 0) & (count_score['tp']>0)
     
     c = count_score.loc[keep]
     tp, fn, fp, num_gt = c['tp'], c['fn'], c['fp'], c['num_gt']
