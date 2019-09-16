@@ -18,22 +18,45 @@ def test_compare_sorter_to_ground_truth():
     # simple match
     gt_sorting, tested_sorting = make_sorting([100, 200, 300, 400, 500, 600], [0, 0, 1, 0, 1, 1],
                                               [101, 201, 301, 302, 401, 501, 502, 900], [0, 0, 5, 6, 0, 5, 6, 11])
-    sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True)
-
-    sc._do_confusion_matrix()
-    #~ print(sc._confusion_matrix)
     
+    for match_mode in ('hungarian', 'best'):
+        
+        compute_labels = (match_mode=='hungarian')
+        
+        sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True,
+                        match_mode=match_mode, compute_labels=compute_labels)
     
-    methods = ['raw_count', 'by_unit', 'pooled_with_sum', 'pooled_with_average',]
-    for method in methods:
-        perf = sc.get_performance(method=method)
-        # ~ print(perf)
+        assert_array_equal(sc.event_counts1.values, [3, 3])
+        assert_array_equal(sc.event_counts2.values, [3, 2, 2, 1])
+        
+        assert_array_equal(sc.possible_match_12[1], [5, 6])
+        
+        assert_array_equal(sc.best_match_12[1], 5)
+        assert_array_equal(sc.hungarian_match_12[1], 5)
+        
+        
+        assert sc.count_score.at[0, 'tp'] == 3
+        assert sc.count_score.at[1, 'tp'] == 2
+        assert sc.count_score.at[1, 'fn'] == 1
+        
+        sc._do_confusion_matrix()
+        # print(sc._confusion_matrix)
+        
+        
+        methods = ['raw_count', 'by_unit', 'pooled_with_average',]
+        for method in methods:
+            perf = sc.get_performance(method=method)
+            # ~ print(perf)
 
-    for method in methods:
-        sc.print_performance(method=method)
+        for method in methods:
+            sc.print_performance(method=method)
+        
+        sc.print_summary()
 
-    sc.print_summary()
+    sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True,
+                    match_mode='hungarian')
 
+    
     # test well detected units depending on thresholds
     good_units = sc.get_well_detected_units()  # tp_thresh=0.95 default value
     assert_array_equal(good_units, [0, ])
@@ -42,8 +65,6 @@ def test_compare_sorter_to_ground_truth():
     good_units = sc.get_well_detected_units(accuracy=.6)
     assert_array_equal(good_units, [0, 1])
     good_units = sc.get_well_detected_units(false_discovery_rate=0.05)
-    assert_array_equal(good_units, [0, 1])
-    good_units = sc.get_well_detected_units(misclassification_rate=0.05)
     assert_array_equal(good_units, [0, 1])
     good_units = sc.get_well_detected_units(accuracy=0.95, false_discovery_rate=.05)  # combine thresh
     assert_array_equal(good_units, [0])
@@ -79,7 +100,8 @@ def test_get_performance():
     # simple match
     gt_sorting, tested_sorting = make_sorting([100, 200, 300, 400], [0, 0, 1, 0],
                                               [101, 201, 301, ], [0, 0, 5])
-    sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True, delta_time=0.3)
+    sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True,
+                                                                        delta_time=0.3)
 
     perf = sc.get_performance('raw_count')
     assert perf.loc[0, 'tp'] == 2
@@ -88,17 +110,14 @@ def test_get_performance():
     assert perf.loc[1, 'fn'] == 0
     assert perf.loc[0, 'fp'] == 0
     assert perf.loc[1, 'fp'] == 0
-
-    perf = sc.get_performance('pooled_with_sum')
-    assert perf['accuracy'] == 0.75
-    assert perf['miss_rate'] == 0.25
+    
+    perf = sc.get_performance('pooled_with_average')
+    assert perf['miss_rate'] == 1 / 6
     
     perf = sc.get_performance('by_unit')
     
     assert perf.loc[0, 'accuracy'] == 2 / 3.
-    assert perf.loc[0, 'misclassification_rate'] == 0
     assert perf.loc[0, 'miss_rate'] == 1 / 3.
-    # assert perf.loc[0, 'fp_rate'] == 0 
 
     ######
     # match when 2 units fire at same time
@@ -108,13 +127,12 @@ def test_get_performance():
 
     perf = sc.get_performance('raw_count')
     assert perf.loc[0, 'tp'] == 3
-    assert perf.loc[0, 'cl'] == 0
     assert perf.loc[0, 'fn'] == 0
     assert perf.loc[0, 'fp'] == 0
     assert perf.loc[0, 'num_gt'] == 3
     assert perf.loc[0, 'num_tested'] == 3
 
-    perf = sc.get_performance('pooled_with_sum')
+    perf = sc.get_performance('pooled_with_average')
     assert perf['accuracy'] == 1.
     assert perf['miss_rate'] == 0.
 

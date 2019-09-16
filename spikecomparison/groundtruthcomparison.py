@@ -1,15 +1,16 @@
 import numpy as np
 import pandas as pd
 
-from .basecomparison import BaseComparison
-from .comparisontools import compute_agreement_score
+from .basecomparison import BaseTwoSorterComparison
+from .comparisontools import (compute_agreement_score, do_score_labels, make_possible_match, 
+                make_best_match, make_hungarian_match, do_confusion_matrix, do_count_score, compute_performence)
 
 
-# Note for dev,  because of  BaseComparison internally:
+# Note for dev,  because of  BaseTwoSorterComparison internally:
 #     sorting1 = gt_sorting
 #     sorting2 = tested_sorting
 
-class GroundTruthComparison(BaseComparison):
+class GroundTruthComparison(BaseTwoSorterComparison):
     """
     Class to compare a sorter to ground truth (GT)
     
@@ -28,61 +29,130 @@ class GroundTruthComparison(BaseComparison):
     """
 
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
-                 delta_time=0.3, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=None,
-                 n_jobs=-1, compute_labels=True, compute_misclassification=True, verbose=False):
+                 delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=0.2,
+                 n_jobs=-1, match_mode ='hungarian', compute_labels=False, verbose=False):
+
         if gt_name is None:
             gt_name = 'ground truth'
         if tested_name is None:
             tested_name = 'tested'
-        BaseComparison.__init__(self, gt_sorting, tested_sorting, sorting1_name=gt_name, sorting2_name=tested_name,
-                                delta_time=delta_time, min_accuracy=min_accuracy, n_jobs=n_jobs,
-                                compute_labels=compute_labels, compute_misclassification=compute_misclassification,
+        BaseTwoSorterComparison.__init__(self, gt_sorting, tested_sorting, sorting1_name=gt_name, sorting2_name=tested_name,
+                                delta_time=delta_time, sampling_frequency=sampling_frequency, min_accuracy=min_accuracy, n_jobs=n_jobs,
                                 verbose=verbose)
         self.exhaustive_gt = exhaustive_gt
-        if bad_redundant_threshold is None:
-            bad_redundant_threshold = 0.2
         self._bad_redundant_threshold = bad_redundant_threshold
+
+        assert match_mode in ['hungarian', 'best']
+        self.match_mode = match_mode
+        self._compute_labels = compute_labels
+        
         self._do_count()
+        
+        self._labels_st1 = None
+        self._labels_st2 = None
+        if self._compute_labels:
+            self._do_score_labels()
+
+        # confusion matrix is compute on demand
+        self._confusion_matrix = None
+        
+        
+    
+    def get_labels1(self, unit_id):
+        if self._labels_st1 is None:
+            self._do_score_labels()
+        
+        if unit_id in self.sorting1.get_unit_ids():
+            return self._labels_st1[unit_id]
+        else:
+            raise Exception("Unit_id is not a valid unit")
+
+    def get_labels2(self, unit_id):
+        if self._labels_st1 is None:
+            self._do_score_labels()
+        
+        if unit_id in self.sorting1.get_unit_ids():
+            return self._labels_st1[unit_id]
+        else:
+            raise Exception("Unit_id is not a valid unit")
+
+    def _do_matching(self):
+        if self._verbose:
+            print("Matching...")
+
+        self.possible_match_12, self.possible_match_21 = make_possible_match(self.agreement_scores, self.min_accuracy)
+        self.best_match_12, self.best_match_21 = make_best_match(self.agreement_scores, self.min_accuracy)
+        self.hungarian_match_12, self.hungarian_match_21 = make_hungarian_match(self.agreement_scores, self.min_accuracy)
+
 
     def _do_count(self):
         """
         Do raw count into a dataframe.
+        
+        Internally use hugarian match or best match.
+        
         """
-        unit1_ids = self.sorting1.get_unit_ids()
-        columns = ['tp', 'fn', 'cl', 'fp', 'num_gt', 'num_tested', 'tested_id']
-        self.count = pd.DataFrame(index=unit1_ids, columns=columns)
-        self.count.index.name = 'gt_unit_id'
-        for u1 in unit1_ids:
-            ## this was the previous count based on hungarian match:
-            ## u2 = self._unit_map12[u1] 
-            # now we use the best match wich is more natural for GT
-            u2 = self._best_match_units_12[u1]
+        if self.match_mode == 'hungarian':
+            match_12 = self.hungarian_match_12
+        elif self.match_mode == 'best':
+            match_12 = self.best_match_12
+        self.count_score = do_count_score(self.event_counts1, self.event_counts2, 
+                            match_12, self.match_event_count)
 
-            self.count.loc[u1, 'tp'] = np.sum(self._labels_st1[u1] == 'TP')
-            self.count.loc[u1, 'cl'] = sum(e.startswith('CL') for e in self._labels_st1[u1])
-            self.count.loc[u1, 'fn'] = np.sum(self._labels_st1[u1] == 'FN')
-            self.count.loc[u1, 'num_gt'] = self._labels_st1[u1].size
-            self.count.loc[u1, 'tested_id'] = u2
 
-            if u2 == -1:
-                self.count.loc[u1, 'fp'] = 0
-                self.count.loc[u1, 'num_tested'] = 0
-            else:
-                self.count.loc[u1, 'fp'] = np.sum(self._labels_st2[u2] == 'FP')
-                self.count.loc[u1, 'num_tested'] = self._labels_st2[u2].size
+    def _do_confusion_matrix(self):
+        if self._verbose:
+            print("Computing confusion matrix...")
+
+        if self.match_mode == 'hungarian':
+            match_12 = self.hungarian_match_12
+        elif self.match_mode == 'best':
+            match_12 = self.best_match_12
+            
+        self._confusion_matrix = do_confusion_matrix(self.event_counts1, self.event_counts2, match_12, self.match_event_count)
+        
+    def get_confusion_matrix(self):
+        """
+        Computes the confusion matrix.
+
+        Returns
+        ------
+        confusion_matrix: np.array
+            The confusion matrix
+        st1_idxs: np.array
+            Array with order of units1 in confusion matrix
+        st2_idxs: np.array
+            Array with order of units2 in confusion matrix
+        """
+        if self._confusion_matrix is None:
+            self._do_confusion_matrix()
+        return self._confusion_matrix
+
+
+
+
+    def _do_score_labels(self):
+        assert self.match_mode == 'hungarian',\
+                    'Labels (TP, FP, FN) can be computed only with hungarian match'            
+
+        if self._verbose:
+            print("Adding labels...")
+        
+        self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
+                                                             self.delta_frames, self.hungarian_match_12, True)
+
 
     def get_performance(self, method='by_unit', output='pandas'):
         """
         Get performance rate with several method:
           * 'raw_count' : just render the raw count table
           * 'by_unit' : render perf as rate unit by unit of the GT
-          * 'pooled_with_sum' : pool all spike with a sum and compute rate
           * 'pooled_with_average' : compute rate unit by unit and average
 
         Parameters
         ----------
         method: str
-            'by_unit', 'pooled_with_sum' or 'pooled_with_average'
+            'by_unit',  or 'pooled_with_average'
         output: str
             'pandas' or 'dict'
 
@@ -91,27 +161,15 @@ class GroundTruthComparison(BaseComparison):
         perf: pandas dataframe/series (or dict)
             dataframe/series (based on 'output') with performance entries
         """
-        possibles = ('raw_count', 'by_unit', 'pooled_with_sum', 'pooled_with_average')
+        possibles = ('raw_count', 'by_unit',  'pooled_with_average')
         if method not in possibles:
             raise Exception("'method' can be " + ' or '.join(possibles))
 
         if method == 'raw_count':
-            perf = self.count
+            perf = self.count_score
 
         elif method == 'by_unit':
-            unit1_ids = self.sorting1.get_unit_ids()
-            perf = pd.DataFrame(index=unit1_ids, columns=_perf_keys)
-            perf.index.name = 'gt_unit_id'
-            c = self.count
-            tp, cl, fn, fp, num_gt = c['tp'], c['cl'], c['fn'], c['fp'], c['num_gt']
-            perf = _compute_perf(tp, cl, fn, fp, num_gt, perf)
-
-        elif method == 'pooled_with_sum':
-            # here all spike from units are polled with sum.
-            perf = pd.Series(index=_perf_keys)
-            c = self.count
-            tp, cl, fn, fp, num_gt = c['tp'].sum(), c['cl'].sum(), c['fn'].sum(), c['fp'].sum(), c['num_gt'].sum()
-            perf = _compute_perf(tp, cl, fn, fp, num_gt, perf)
+            perf = compute_performence(self.count_score)
 
         elif method == 'pooled_with_average':
             perf = self.get_performance(method='by_unit').mean(axis=0)
@@ -121,15 +179,12 @@ class GroundTruthComparison(BaseComparison):
 
         return perf
 
-    def print_performance(self, method='by_unit'):
+    def print_performance(self, method='pooled_with_average'):
         """
         Print performance with the selected method
         """
 
-        if self._compute_misclassification:
-            template_txt_performance = _template_txt_performance_with_cl
-        else:
-            template_txt_performance = _template_txt_performance
+        template_txt_performance = _template_txt_performance
 
         if method == 'by_unit':
             perf = self.get_performance(method=method, output='pandas')
@@ -138,13 +193,7 @@ class GroundTruthComparison(BaseComparison):
             d = {k: perf[k].tolist() for k in perf.columns}
             txt = template_txt_performance.format(method=method, **d)
             print(txt)
-
-        elif method == 'pooled_with_sum':
-            perf = self.get_performance(method=method, output='pandas')
-            perf = perf * 100
-            txt = template_txt_performance.format(method=method, **perf.to_dict())
-            print(txt)
-
+        
         elif method == 'pooled_with_average':
             perf = self.get_performance(method=method, output='pandas')
             perf = perf * 100
@@ -162,8 +211,8 @@ class GroundTruthComparison(BaseComparison):
         txt = _template_summary_part1
 
         d = dict(
-            num_gt=len(self._labels_st1),
-            num_tested=len(self._labels_st2),
+            num_gt=len(self.unit1_ids),
+            num_tested=len(self.unit2_ids),
             num_well_detected=self.count_well_detected_units(**kargs_well_detected),
             num_redundant=self.count_redundant_units(),
         )
@@ -188,7 +237,7 @@ class GroundTruthComparison(BaseComparison):
         accuracy above 0.95 are selected.
         
         For some thresholds columns units are below the threshold for instance
-        'miss_rate', 'false_discovery_rate', 'misclassification_rate'
+        'miss_rate', 'false_discovery_rate'
         
         If several thresh are given the the intersect of selection is kept.
         
@@ -204,7 +253,7 @@ class GroundTruthComparison(BaseComparison):
             thresholds = {'accuracy': 0.95}
 
         _above = ['accuracy', 'recall', 'precision']
-        _below = ['false_discovery_rate', 'miss_rate', 'misclassification_rate']
+        _below = ['false_discovery_rate', 'miss_rate']
 
         perf = self.get_performance(method='by_unit')
         keep = perf['accuracy'] >= 0  # tale all
@@ -247,21 +296,16 @@ class GroundTruthComparison(BaseComparison):
         if bad_redundant_threshold is not None:
             self._bad_redundant_threshold = bad_redundant_threshold
 
-        best_match = list(self._unit_map12.values())
+        matched_units2 = list(self.hungarian_match_12.values)
         false_positive_ids = []
-        unit2_ids = self.sorting2.get_unit_ids()
-        for u2 in unit2_ids:
-            if u2 not in best_match:
-                if self._best_match_units_21[u2] == -1:
+        for u2 in self.unit2_ids:
+            if u2 not in matched_units2:
+                if self.best_match_21[u2] == -1:
                     false_positive_ids.append(u2)
                 else:
-                    u1 = self._best_match_units_21[u2]
-                    num_matches = self._matching_event_counts_12[u1].get(u2, 0)
-                    num1 = self._event_counts_1[u1]
-                    num2 = self._event_counts_2[u2]
-                    agree_score = compute_agreement_score(num_matches, num1, num2)
-
-                    if agree_score < self._bad_redundant_threshold:
+                    u1 = self.best_match_21[u2]
+                    score = self.agreement_scores.at[u1, u2]
+                    if score < self._bad_redundant_threshold:
                         false_positive_ids.append(u2)
 
         return false_positive_ids
@@ -291,21 +335,14 @@ class GroundTruthComparison(BaseComparison):
         """
         if bad_redundant_threshold is not None:
             self._bad_redundant_threshold = bad_redundant_threshold
-        best_match = list(self._unit_map12.values())
+        matched_units2 = list(self.hungarian_match_12.values)
         redundant_ids = []
-        unit2_ids = self.sorting2.get_unit_ids()
-        for u2 in unit2_ids:
-            if u2 not in best_match and self._best_match_units_21[u2] != -1:
-                # a redundant unit is not a best match
-                u1 = self._best_match_units_21[u2]
-                if u2 != self._best_match_units_12[u1]:
-
-                    num_matches = self._matching_event_counts_12[u1].get(u2, 0)
-                    num1 = self._event_counts_1[u1]
-                    num2 = self._event_counts_2[u2]
-                    agree_score = compute_agreement_score(num_matches, num1, num2)
-
-                    if agree_score > self._bad_redundant_threshold:
+        for u2 in self.unit2_ids:
+            if u2 not in matched_units2 and self.best_match_21[u2] != -1:
+                u1 = self.best_match_21[u2]
+                if u2 != self.best_match_12[u1]:
+                    score = self.agreement_scores.at[u1, u2]
+                    if score >= self._bad_redundant_threshold:
                         redundant_ids.append(u2)
 
         return redundant_ids
@@ -328,11 +365,10 @@ class GroundTruthComparison(BaseComparison):
         Need exhaustive_gt=True
         """
         assert self.exhaustive_gt, 'bad_units list is valid only if exhaustive_gt=True'
-        best_match = list(self._unit_map12.values())
+        matched_units2 = list(self.hungarian_match_12.values)
         bad_ids = []
-        unit2_ids = self.sorting2.get_unit_ids()
-        for u2 in unit2_ids:
-            if u2 not in best_match:
+        for u2 in self.unit2_ids:
+            if u2 not in matched_units2:
                 bad_ids.append(u2)
         return bad_ids
 
@@ -343,37 +379,12 @@ class GroundTruthComparison(BaseComparison):
         return len(self.get_bad_units())
 
 
-def _compute_perf(tp, cl, fn, fp, num_gt, perf):
-    """
-    This compte perf formula.
-    this trick here is that it works both on pd.Series and pd.Dataframe
-    line by line.
-    This it is internally used by perf by psiketrain and poll_with_sum.
-    
-    https://en.wikipedia.org/wiki/Sensitivity_and_specificity
-    
-    Note :
-      * we don't have TN because it do not make sens here.
-      * 'accuracy' = 'tp_rate' because TN=0
-      * 'recall' = 'sensitivity'
-    """
-
-    perf['accuracy'] = tp / (tp + fn + fp)
-    perf['recall'] = tp / (tp + fn)
-    perf['precision'] = tp / (tp + fp)
-    perf['false_discovery_rate'] = fp / (tp + fp)
-    perf['miss_rate'] = fn / num_gt
-    perf['misclassification_rate'] = cl / num_gt
-
-    return perf
-
 
 # usefull also for gathercomparison
-_perf_keys = ['accuracy', 'recall', 'precision', 'false_discovery_rate', 'miss_rate', 'misclassification_rate']
 
-_template_txt_performance = """PERFORMANCE
-Method : {method}
 
+_template_txt_performance = """PERFORMANCE ({method})
+-----------
 ACCURACY: {accuracy}
 RECALL: {recall}
 PRECISION: {precision}
@@ -381,9 +392,9 @@ FALSE DISCOVERY RATE: {false_discovery_rate}
 MISS RATE: {miss_rate}
 """
 
-_template_txt_performance_with_cl = _template_txt_performance + 'MISS CLASSIFICATION RATE: {misclassification_rate}\n'
 
 _template_summary_part1 = """SUMMARY
+-------
 GT num_units: {num_gt}
 TESTED num_units: {num_tested}
 num_well_detected: {num_well_detected} 
@@ -396,9 +407,8 @@ num_bad: {num_bad}
 
 
 def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tested_name=None,
-                                   delta_time=0.3, min_accuracy=0.5, exhaustive_gt=True, n_jobs=-1,
-                                   bad_redundant_threshold=0.2, compute_labels=True,
-                                   compute_misclassification=False, verbose=False):
+                                   delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True, match_mode='hungarian', 
+                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=True, verbose=False):
     '''
     Compares a sorter to a ground truth.
 
@@ -420,12 +430,16 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
         The name of sorter 2
     delta_time: float
         Number of ms to consider coincident spikes (default 0.3 ms)
+    sampling_frequency: float
+        Optional sampling frequency in Hz when not included in sorting
     min_accuracy: float
         Minimum agreement score to match units (default 0.5)
     exhaustive_gt: bool (default True)
         Tell if the ground true is "exhaustive" or not. In other world if the
         GT have all possible units. It allows more performance measurement.
         For instance, MEArec simulated dataset have exhaustive_gt=True
+    match_mode: 'hungarian', or 'best'
+        What is match used for counting : 'hugarian' or 'best match'.
     n_jobs: int
         Number of cores to use in parallel. Uses all available if -1
     bad_redundant_threshold: float
@@ -433,8 +447,6 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
         which is considered 'redundant' (default 0.2)
     compute_labels: bool
         If True, labels are computed at instantiation (default True)
-    compute_misclassification: bool
-        If True, misclassification errors are computed (default False)
     verbose: bool
         If True, output is verbose
     Returns
@@ -444,7 +456,7 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
 
     '''
     return GroundTruthComparison(gt_sorting=gt_sorting, tested_sorting=tested_sorting, gt_name=gt_name,
-                                 tested_name=tested_name, delta_time=delta_time, min_accuracy=min_accuracy,
-                                 exhaustive_gt=exhaustive_gt, n_jobs=n_jobs, compute_labels=compute_labels,
-                                 bad_redundant_threshold=bad_redundant_threshold,
-                                 compute_misclassification=compute_misclassification, verbose=verbose)
+                                 tested_name=tested_name, delta_time=delta_time, sampling_frequency=sampling_frequency,
+                                 min_accuracy=min_accuracy, exhaustive_gt=exhaustive_gt, n_jobs=n_jobs, match_mode='hungarian', 
+                                 compute_labels=compute_labels, bad_redundant_threshold=bad_redundant_threshold,
+                                 verbose=verbose)

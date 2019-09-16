@@ -6,7 +6,8 @@ import pandas as pd
 
 import spikeextractors as se
 
-from .groundtruthcomparison import compare_sorter_to_ground_truth, _perf_keys
+from .comparisontools import _perf_keys
+from .groundtruthcomparison import compare_sorter_to_ground_truth
 
 from .studytools import (setup_comparison_study, run_study_sorters, get_rec_names,
                          get_recordings, copy_sortings_to_npz, iter_computed_names,
@@ -97,7 +98,7 @@ class GroundTruthStudy:
         perf_by_units = []
         for rec_name, sorter_name, sorting in iter_computed_sorting(self.study_folder):
             comp = self.comparisons[(rec_name, sorter_name)]
-
+            
             perf = comp.get_performance(method='by_unit', output='pandas')
             perf['rec_name'] = rec_name
             perf['sorter_name'] = sorter_name
@@ -139,8 +140,9 @@ class GroundTruthStudy:
         dataframes = {}
         dataframes['run_times'] = self.aggregate_run_times().reset_index()
         perfs = self.aggregate_performance_by_units()
+        
         dataframes['perf_by_units'] = perfs.reset_index()
-        dataframes['perf_pooled_with_average'] = perfs.groupby(['rec_name', 'sorter_name']).mean().reset_index()
+        # dataframes['perf_pooled_with_average'] = perfs.reset_index().groupby(['rec_name', 'sorter_name']).mean().reset_index()
         dataframes['count_units'] = self.aggregate_count_units(**karg_thresh).reset_index()
 
         if copy_into_folder:
