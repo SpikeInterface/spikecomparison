@@ -63,7 +63,7 @@ def setup_comparison_study(study_folder, gt_dict):
         recording.write_to_binary_dat_format(raw_filename, time_axis=0, dtype='float32', chunksize=chunksize)
         recording.save_to_probe_file(prb_filename, format='spyking_circus')
         with open(json_filename, 'w', encoding='utf8') as f:
-            info = dict(sample_rate=sr, num_chan=num_chan, dtype='float32', frames_first=True)
+            info = dict(sample_rate=sr, num_chan=num_chan, dtype='float32', tima_axis=0)
             json.dump(info, f, indent=4)
 
         # write recording sorting_gt as with npz format
@@ -126,7 +126,7 @@ def get_recordings(study_folder):
             info = json.load(f)
 
         rec = se.BinDatRecordingExtractor(raw_filename, info['sample_rate'], info['num_chan'],
-                                          info['dtype'], frames_first=info['frames_first'])
+                                          info['dtype'], time_axis=info['time_axis'])
         rec_probe = rec.load_probe_file(prb_filename)
 
         recording_dict[rec_name] = rec_probe
