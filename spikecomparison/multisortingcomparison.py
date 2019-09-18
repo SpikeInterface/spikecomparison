@@ -9,12 +9,12 @@ import networkx as nx
 
 
 class MultiSortingComparison(BaseComparison):
-    def __init__(self, sorting_list, name_list=None, delta_time=0.3, sampling_frequency=None, 
-                min_accuracy=0.5, n_jobs=-1, verbose=False):
-        
-        BaseComparison.__init__(self, sorting_list, name_list=name_list, 
-                delta_time=delta_time, sampling_frequency=sampling_frequency, 
-                min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
+    def __init__(self, sorting_list, name_list=None, delta_time=0.3, sampling_frequency=None,
+                 min_accuracy=0.5, n_jobs=-1, verbose=False):
+
+        BaseComparison.__init__(self, sorting_list, name_list=name_list,
+                                delta_time=delta_time, sampling_frequency=sampling_frequency,
+                                min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
         self._do_matching(verbose)
 
     def get_sorting_list(self):
@@ -26,83 +26,28 @@ class MultiSortingComparison(BaseComparison):
     def _do_matching(self, verbose):
         # do pairwise matching
         if self._verbose:
-            print('multicomaprison step1 : pairwise comparison')
-        
-        #~ self.sorting_comparisons = {}
-        #~ comparison_list = []
-        #~ for i in range(len(self.sorting_list)):
-            #~ comparison_ = {}
-            #~ for j in range(len(self.sorting_list)):
-                #~ if i != j:
-                    #~ # and [self.name_list[i], self.name_list[j]] not in comparison_list \
-                    #~ #     and [self.name_list[j], self.name_list[i]] not in comparison_list:
-                    #~ if verbose:
-                        #~ print("  Comparing: ", self.name_list[i], " and ", self.name_list[j])
-                    #~ comparison_[self.name_list[j]] = SymmetricSortingComparison(self.sorting_list[i], self.sorting_list[j],
-                                                                        #~ sorting1_name=self.name_list[i],
-                                                                        #~ sorting2_name=self.name_list[j],
-                                                                        #~ delta_time=self.delta_time,
-                                                                        #~ sampling_frequency=self.sampling_frequency,
-                                                                        #~ min_accuracy=self.min_accuracy,
-                                                                        #~ n_jobs=self._n_jobs,
-                                                                        #~ verbose=False)
-                    #~ comparison_list.append([self.name_list[i], self.name_list[j]])
-            #~ self.sorting_comparisons[self.name_list[i]] = comparison_
-        
+            print('Multicomaprison step1: pairwise comparison')
+
         self.comparisons = []
         for i in range(len(self.sorting_list)):
-            for j in range(i+1, len(self.sorting_list)):
+            for j in range(i + 1, len(self.sorting_list)):
                 if verbose:
                     print("  Comparing: ", self.name_list[i], " and ", self.name_list[j])
                 comp = SymmetricSortingComparison(self.sorting_list[i], self.sorting_list[j],
-                                                                        sorting1_name=self.name_list[i],
-                                                                        sorting2_name=self.name_list[j],
-                                                                        delta_time=self.delta_time,
-                                                                        sampling_frequency=self.sampling_frequency,
-                                                                        min_accuracy=self.min_accuracy,
-                                                                        n_jobs=self._n_jobs,
-                                                                        verbose=False)
-            self.comparisons.append(comp)
-        
-        
-        
-        # create graph of all units from all sorters:
-        #   node (sorterXunits)
-        #   edge (agreement_score)
+                                                  sorting1_name=self.name_list[i],
+                                                  sorting2_name=self.name_list[j],
+                                                  delta_time=self.delta_time,
+                                                  sampling_frequency=self.sampling_frequency,
+                                                  min_accuracy=self.min_accuracy,
+                                                  n_jobs=self._n_jobs,
+                                                  verbose=False)
+                self.comparisons.append(comp)
+
         if self._verbose:
-            print('multicomaprison step2 : make graph')
-        
-        #~ agreement = {}
-        #~ graph = nx.Graph()
-        #~ for sort_name, sort_comp in self.sorting_comparisons.items():
-            #~ unit_agreement = {}
-            #~ sort_comp2 = list(sort_comp.keys())
-            #~ units = sort_comp[sort_comp2[0]].sorting1.get_unit_ids()
-            #~ for unit in units:
-                #~ matched_list = {}
-                #~ matched_agreement = {}
-                #~ for k, sc in sort_comp.items():
-                    #~ mapped_unit = sc.get_mapped_sorting1().get_mapped_unit_ids(unit)
-                    #~ mapped_agr = sc.get_agreement_fraction(unit, sc.get_mapped_sorting1().get_mapped_unit_ids(unit))
-                    #~ matched_list[sc.sorting2_name] = mapped_unit
-                    #~ matched_agreement[sc.sorting2_name] = mapped_agr
-                    #~ node1_name = str(sort_name) + '_' + str(unit)
-                    #~ graph.add_node(node1_name)
-                    #~ if mapped_unit != -1:
-                        #~ node2_name = str(sc.sorting2_name) + '_' + str(mapped_unit)
-                        #~ if node2_name not in graph:
-                            #~ graph.add_node(node2_name)
-                        #~ if (node1_name, node2_name) not in graph.edges:
-                            #~ if verbose:
-                                #~ print('  Adding edge: ', node1_name, node2_name)
-                            #~ graph.add_edge(node1_name, node2_name, weight=mapped_agr)
-                #~ unit_agreement[unit] = {'units': matched_list, 'score': matched_agreement}
-            #~ agreement[sort_name] = unit_agreement
-        #~ self.agreement = agreement
-        #~ self.graph = graph.to_undirected()
-        
+            print('Multicomaprison step2: make graph')
+
         self.graph = nx.Graph()
-        # nodes
+        # ï¿½nodes
         for i, sorting in enumerate(self.sorting_list):
             sorter_name = self.name_list[i]
             for unit in sorting.get_unit_ids():
@@ -117,19 +62,19 @@ class MultiSortingComparison(BaseComparison):
                     node2_name = str(comp.sorting2_name) + '_' + str(u2)
                     score = comp.agreement_scores.loc[u1, u2]
                     self.graph.add_edge(node1_name, node2_name, weight=score)
-        
-        # the graph is symetrical
+
+        # the graph is symmetrical
         self.graph = self.graph.to_undirected()
-        
+
         # extract agrrement from graph
         if self._verbose:
-            print('multicomaprison step3 : extract agreement from graph')
-        
+            print('Multicomaprison step3: extract agreement from graph')
+
         self._new_units = {}
         self._spiketrains = []
         added_nodes = []
         unit_id = 0
-        
+
         # Note in this graph node=one unit for one sorter
         for node in self.graph.nodes():
             edges = self.graph.edges(node, data=True)
@@ -149,7 +94,7 @@ class MultiSortingComparison(BaseComparison):
                     # Note for alessio n1>node1 n2>node2 e>edge
                     n1, n2, d = e
                     n2_edges = self.graph.edges(n2, data=True)
-                    if len(n2_edges) > 0: # useless line if
+                    if len(n2_edges) > 0:  # useless line if
                         for e_n in n2_edges:
                             n_n1, n_n2, d = e_n
                             # Note for alessio  why do do you sorter each elements in the all_edges ?
@@ -186,7 +131,7 @@ class MultiSortingComparison(BaseComparison):
         # extract best matches true positive spike trains
         if self._verbose:
             print('multicomaprison step4 : make agreement spiketrains')
-        
+
         for u, v in self._new_units.items():
             # count matched number
             matched_num = len(v['sorter_unit_ids'].keys())
@@ -231,7 +176,6 @@ class MultiSortingComparison(BaseComparison):
                 assert np.allclose(sp_tp1, sp_tp2, atol=self.delta_frames)
                 self._spiketrains.append(sp_tp1)
         self.added_nodes = added_nodes
-
 
     def _do_agreement_matrix(self, minimum_matching=0):
         sorted_name_list = sorted(self.name_list)
