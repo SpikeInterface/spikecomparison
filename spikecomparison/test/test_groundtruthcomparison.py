@@ -34,6 +34,11 @@ def test_compare_sorter_to_ground_truth():
         assert_array_equal(sc.best_match_12[1], 5)
         assert_array_equal(sc.hungarian_match_12[1], 5)
         
+        #~ print(sc.agreement_scores)
+        #~ print(sc.
+        scores = sc.agreement_scores
+        ordered_scores = sc.get_ordered_agreement_scores()
+        assert_array_equal(scores.loc[ordered_scores.index, ordered_scores.columns], ordered_scores)
         
         assert sc.count_score.at[0, 'tp'] == 3
         assert sc.count_score.at[1, 'tp'] == 2
@@ -139,4 +144,4 @@ def test_get_performance():
 
 if __name__ == '__main__':
     test_compare_sorter_to_ground_truth()
-    test_get_performance()
+    #~ test_get_performance()

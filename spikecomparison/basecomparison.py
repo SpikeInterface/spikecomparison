@@ -109,6 +109,11 @@ class BaseTwoSorterComparison(BaseComparison):
         # must be implemented in subclass
         raise(NotImplementedError)
     
-
-
-
+    def get_ordered_agreement_scores(self):
+        order0 = self.agreement_scores.max(axis=1).argsort()
+        scores = self.agreement_scores.iloc[order0.values[::-1], :]
+        
+        order1 = scores.max(axis=0).argsort()
+        scores = self.agreement_scores.iloc[:, order1.values[::-1]].copy()
+        
+        return scores
