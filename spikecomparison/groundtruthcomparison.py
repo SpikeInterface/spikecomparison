@@ -249,8 +249,10 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             A dict that contains some threshold of columns of perf Dataframe.
             If sevral threhold they are combined.
         """
-        if len(thresholds) == 0:
+        if len(thresholds['thresholds']) == 0:
             thresholds = {'accuracy': 0.95}
+        else:
+            thresholds = thresholds['thresholds']
 
         _above = ['accuracy', 'recall', 'precision']
         _below = ['false_discovery_rate', 'miss_rate']
