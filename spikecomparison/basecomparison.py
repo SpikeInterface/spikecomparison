@@ -119,8 +119,9 @@ class BaseTwoSorterComparison(BaseComparison):
         order1 = []
         for r in range(scores.shape[0]):
             possible = indexes[~np.in1d(indexes, order1)]
-            ind = np.argmax(scores.iloc[r, possible].values)
-            order1.append(possible[ind])
+            if possible.size>0:
+                ind = np.argmax(scores.iloc[r, possible].values)
+                order1.append(possible[ind])
         remain = indexes[~np.in1d(indexes, order1)]
         order1.extend(remain)
         scores = scores.iloc[:, order1]
