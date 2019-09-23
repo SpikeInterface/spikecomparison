@@ -45,13 +45,18 @@ def test_extract_sortings():
         gt_sorting = study.get_ground_truth(rec_name)
         # ~ print(rec_name, gt_sorting)
 
-    study.copy_sortings()
-    study.run_comparisons(exhaustive_gt=True)
+    for rec_name in study.rec_names:
+        snr = study.get_units_snr(rec_name=rec_name)
+        print(snr)
 
-    run_times = study.aggregate_run_times()
-    perf = study.aggregate_performance_by_units()
-    count_units = study.aggregate_count_units()
-    dataframes = study.aggregate_dataframes()
+    #~ study.copy_sortings()
+    #~ study.run_comparisons(exhaustive_gt=True)
+
+    #~ run_times = study.aggregate_run_times()
+    #~ perf = study.aggregate_performance_by_units()
+    #~ count_units = study.aggregate_count_units()
+    #~ dataframes = study.aggregate_dataframes()
+    
 
 
 if __name__ == '__main__':

@@ -47,7 +47,7 @@ class MultiSortingComparison(BaseComparison):
             print('Multicomaprison step2: make graph')
 
         self.graph = nx.Graph()
-        # �nodes
+        # nodes
         for i, sorting in enumerate(self.sorting_list):
             sorter_name = self.name_list[i]
             for unit in sorting.get_unit_ids():
