@@ -408,7 +408,7 @@ num_bad: {num_bad}
 
 def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                                    delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True, match_mode='hungarian', 
-                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=True, verbose=False):
+                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=False, verbose=False):
     '''
     Compares a sorter to a ground truth.
 
