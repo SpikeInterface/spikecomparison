@@ -109,6 +109,20 @@ class BaseTwoSorterComparison(BaseComparison):
         # must be implemented in subclass
         raise(NotImplementedError)
     
-
-
-
+    def get_ordered_agreement_scores(self):
+        # order rows
+        order0 = self.agreement_scores.max(axis=1).argsort()
+        scores = self.agreement_scores.iloc[order0.values[::-1], :]
+        
+        # order columns
+        indexes = np.arange(scores.shape[1])
+        order1 = []
+        for r in range(scores.shape[0]):
+            possible = indexes[~np.in1d(indexes, order1)]
+            ind = np.argmax(scores.iloc[r, possible].values)
+            order1.append(possible[ind])
+        remain = indexes[~np.in1d(indexes, order1)]
+        order1.extend(remain)
+        scores = scores.iloc[:, order1]
+        
+        return scores
