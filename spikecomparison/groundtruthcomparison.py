@@ -71,8 +71,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         if self._labels_st1 is None:
             self._do_score_labels()
         
-        if unit_id in self.sorting1.get_unit_ids():
-            return self._labels_st1[unit_id]
+        if unit_id in self.sorting2.get_unit_ids():
+            return self._labels_st2[unit_id]
         else:
             raise Exception("Unit_id is not a valid unit")
 
