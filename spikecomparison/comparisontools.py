@@ -406,7 +406,7 @@ def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclass
             mapped_st = sorting2.get_unit_spike_train(u2)
             # from gtst: TP, TPO, TPSO, FN, FNO, FNSO
             for sp_i, n_sp in enumerate(sts1[u1]):
-                matches = (np.abs(mapped_st.astype(int) - n_sp) <= delta_frames // 2)
+                matches = (np.abs(mapped_st.astype(int) - n_sp) <= delta_frames)
                 if np.sum(matches) > 0:
                     if lab_st1[sp_i] != 'TP' and lab_st2[np.where(matches)[0][0]] != 'TP':
                         lab_st1[sp_i] = 'TP'
@@ -426,7 +426,7 @@ def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclass
                             lab_st2 = labels_st2[u2]
                             n_sp = st1[l_gt]
                             mapped_st = sts2[u2]
-                            matches = (np.abs(mapped_st.astype(int) - n_sp) <= delta_frames // 2)
+                            matches = (np.abs(mapped_st.astype(int) - n_sp) <= delta_frames)
                             if np.sum(matches) > 0:
                                 if 'CL' not in lab_st1[l_gt] and 'CL' not in lab_st2[np.where(matches)[0][0]]:
                                     lab_st1[l_gt] = 'CL_' + str(u1) + '_' + str(u2)
