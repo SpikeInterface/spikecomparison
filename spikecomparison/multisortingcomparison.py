@@ -9,7 +9,7 @@ import networkx as nx
 
 
 class MultiSortingComparison(BaseComparison):
-    def __init__(self, sorting_list, name_list=None, delta_time=0.3, sampling_frequency=None,
+    def __init__(self, sorting_list, name_list=None, delta_time=0.4, sampling_frequency=None,
                  min_accuracy=0.5, n_jobs=-1, verbose=False):
 
         BaseComparison.__init__(self, sorting_list, name_list=name_list,
@@ -250,7 +250,7 @@ class AgreementSortingExtractor(se.SortingExtractor):
         return np.array(self._msc._spiketrains[list(self._msc._new_units.keys()).index(unit_id)])
 
 
-def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.3, min_accuracy=0.5,
+def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, min_accuracy=0.5,
                              n_jobs=-1, sampling_frequency=None, verbose=False):
     '''
     Compares multiple spike sorter outputs.
@@ -267,7 +267,7 @@ def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.3, min_a
     name_list: list
         List of spike sorter names. If not given, sorters are named as 'sorter0', 'sorter1', 'sorter2', etc.
     delta_time: float
-        Number of ms to consider coincident spikes (default 0.3 ms)
+        Number of ms to consider coincident spikes (default 0.4 ms)
     min_accuracy: float
         Minimum agreement score to match units (default 0.5)
     n_jobs: int
