@@ -351,26 +351,24 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
     def get_overmerged_units(self, bad_overmerged_threshold=None):
         """
-        Return "oversplit units"
+        Return "overmerged units"
 
 
-        "oversplit units" are defined as units in tested
-        that match a GT units with a big agreement score
-        but it is not the best match.
-        In other world units in GT that detected twice or more.
+        "overmerged units" are defined as units in tested
+        that match more than one GT unit with an agreement score larger than bad_overmerged_threshold.
 
         Parameters
         ----------
-        bad_oversplit_threshold=None: float (default 0.2)
-            The minimum agreement between gt and tested units
-            that are best match to be counted as "oversplit" unit and not "false positive".
+        bad_overmerged_threshold=None: float (default 0.4)
+            The minimum agreement between a tested unit and several two or more GT nits
+            to be counted as "overmerged".
 
         """
         if bad_overmerged_threshold is not None:
             self._bad_overmerged_threshold = bad_overmerged_threshold
         overmerged_ids = []
         for u2 in self.unit2_ids:
-            scores = self.agreement_scores.at[:, u2]
+            scores = self.agreement_scores.loc[:, u2]
             if len(np.where(scores > self._bad_overmerged_threshold)[0]) > 1:
                 overmerged_ids.append(u2)
 
