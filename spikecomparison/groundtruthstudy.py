@@ -123,7 +123,8 @@ class GroundTruthStudy:
 
         index = pd.MultiIndex.from_tuples(self.computed_names, names=['rec_name', 'sorter_name'])
 
-        count_units = pd.DataFrame(index=index, columns=['num_gt', 'num_sorter', 'num_well_detected', 'num_redundant'])
+        count_units = pd.DataFrame(index=index, columns=['num_gt', 'num_sorter', 'num_well_detected', 'num_oversplit',
+                                                         'num_overmerged'])
 
         if self.exhaustive_gt:
             count_units['num_false_positive'] = None
@@ -137,7 +138,8 @@ class GroundTruthStudy:
             count_units.loc[(rec_name, sorter_name), 'num_sorter'] = len(sorting.get_unit_ids())
             count_units.loc[(rec_name, sorter_name), 'num_well_detected'] = comp.count_well_detected_units(
                 **karg_thresh)
-            count_units.loc[(rec_name, sorter_name), 'num_redundant'] = comp.count_redundant_units()
+            count_units.loc[(rec_name, sorter_name), 'num_oversplit'] = comp.count_oversplit_units()
+            count_units.loc[(rec_name, sorter_name), 'num_overmerged'] = comp.count_overmerged_units()
             if self.exhaustive_gt:
                 count_units.loc[(rec_name, sorter_name), 'num_false_positive'] = comp.count_false_positive_units()
                 count_units.loc[(rec_name, sorter_name), 'num_bad'] = comp.count_bad_units()
