@@ -95,6 +95,33 @@ def get_rec_names(study_folder):
         rec_names = f.read()[:-1].split('\n')
     return rec_names
 
+def get_one_recording(study_folder, rec_name):
+    """
+    Get one recording from its name
+
+    Parameters
+    ----------
+    study_folder: str
+        The study folder.
+    rec_name: str
+        The recording name
+    Returns
+    ----------
+
+    recording: RecordingExtractor
+        The recording.
+    
+    """
+    raw_filename = study_folder / 'raw_files' / (rec_name + '.dat')
+    prb_filename = study_folder / 'raw_files' / (rec_name + '.prb')
+    json_filename = study_folder / 'raw_files' / (rec_name + '.json')
+    with open(json_filename, 'r', encoding='utf8') as f:
+        info = json.load(f)
+    rec = se.BinDatRecordingExtractor(raw_filename, info['sample_rate'], info['num_chan'],
+                                      info['dtype'], time_axis=info['time_axis'])
+    rec = rec.load_probe_file(prb_filename)
+    
+    return rec
 
 def get_recordings(study_folder):
     """
@@ -119,16 +146,7 @@ def get_recordings(study_folder):
     rec_names = get_rec_names(study_folder)
     recording_dict = {}
     for rec_name in rec_names:
-        raw_filename = study_folder / 'raw_files' / (rec_name + '.dat')
-        prb_filename = study_folder / 'raw_files' / (rec_name + '.prb')
-        json_filename = study_folder / 'raw_files' / (rec_name + '.json')
-        with open(json_filename, 'r', encoding='utf8') as f:
-            info = json.load(f)
-        rec = se.BinDatRecordingExtractor(raw_filename, info['sample_rate'], info['num_chan'],
-                                          info['dtype'], time_axis=info['time_axis'])
-        rec_probe = rec.load_probe_file(prb_filename)
-
-        recording_dict[rec_name] = rec_probe
+        recording_dict[rec_name] = get_one_recording(study_folder, rec_name)
 
     return recording_dict
 

@@ -29,7 +29,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
     """
 
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
-                 delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=0.2,
+                 delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=0.2,
                  n_jobs=-1, match_mode ='hungarian', compute_labels=False, verbose=False):
 
         if gt_name is None:
@@ -71,8 +71,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         if self._labels_st1 is None:
             self._do_score_labels()
         
-        if unit_id in self.sorting1.get_unit_ids():
-            return self._labels_st1[unit_id]
+        if unit_id in self.sorting2.get_unit_ids():
+            return self._labels_st2[unit_id]
         else:
             raise Exception("Unit_id is not a valid unit")
 
@@ -200,7 +200,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             txt = template_txt_performance.format(method=method, **perf.to_dict())
             print(txt)
 
-    def print_summary(self, min_redundant_agreement=0.3, **kargs_well_detected):
+    def print_summary(self, min_redundant_agreement=0.4, **kargs_well_detected):
         """
         Print a global performance summary that depend on the context:
           * exhaustive= True/False
@@ -407,8 +407,8 @@ num_bad: {num_bad}
 
 
 def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tested_name=None,
-                                   delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True, match_mode='hungarian', 
-                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=True, verbose=False):
+                                   delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True, match_mode='hungarian', 
+                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=False, verbose=False):
     '''
     Compares a sorter to a ground truth.
 
@@ -429,7 +429,7 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
     tested_name: : str
         The name of sorter 2
     delta_time: float
-        Number of ms to consider coincident spikes (default 0.3 ms)
+        Number of ms to consider coincident spikes (default 0.4 ms)
     sampling_frequency: float
         Optional sampling frequency in Hz when not included in sorting
     min_accuracy: float

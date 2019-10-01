@@ -15,7 +15,7 @@ class BaseComparison:
       * sorting names
       * delta_time to delta_frames
     """
-    def __init__(self, sorting_list, name_list=None, delta_time=0.3, sampling_frequency=None, 
+    def __init__(self, sorting_list, name_list=None, delta_time=0.4, sampling_frequency=None, 
                 min_accuracy=0.5, n_jobs=-1, verbose=False):
         
         self.sorting_list = sorting_list
@@ -53,7 +53,7 @@ class BaseTwoSorterComparison(BaseComparison):
     Base class shared by SortingComparison and GroundTruthComparison
     """
     def __init__(self, sorting1, sorting2, sorting1_name=None, sorting2_name=None, 
-            delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, n_jobs=1, verbose=False):
+            delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, n_jobs=1, verbose=False):
         
         sorting_list = [sorting1, sorting2]
         if sorting1_name is None:
@@ -119,8 +119,9 @@ class BaseTwoSorterComparison(BaseComparison):
         order1 = []
         for r in range(scores.shape[0]):
             possible = indexes[~np.in1d(indexes, order1)]
-            ind = np.argmax(scores.iloc[r, possible].values)
-            order1.append(possible[ind])
+            if possible.size>0:
+                ind = np.argmax(scores.iloc[r, possible].values)
+                order1.append(possible[ind])
         remain = indexes[~np.in1d(indexes, order1)]
         order1.extend(remain)
         scores = scores.iloc[:, order1]

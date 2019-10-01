@@ -11,7 +11,7 @@ class SymmetricSortingComparison(BaseTwoSorterComparison):
     Class for symmetric comparison of two sorters when no assumption is done.
     """
     def __init__(self, sorting1, sorting2, sorting1_name=None, sorting2_name=None,
-                 delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, n_jobs=-1, verbose=False):
+                 delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, n_jobs=-1, verbose=False):
         BaseTwoSorterComparison.__init__(self, sorting1, sorting2, sorting1_name=sorting1_name, sorting2_name=sorting2_name, 
             delta_time=delta_time, sampling_frequency=sampling_frequency, min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
 
@@ -106,7 +106,7 @@ class MappedSortingExtractor(se.SortingExtractor):
             return None
 
 
-def compare_two_sorters(sorting1, sorting2, sorting1_name=None, sorting2_name=None, delta_time=0.3, 
+def compare_two_sorters(sorting1, sorting2, sorting1_name=None, sorting2_name=None, delta_time=0.4, 
                         sampling_frequency=None, min_accuracy=0.5, n_jobs=-1, verbose=False):
     '''
     Compares two spike sorter outputs.
@@ -129,7 +129,7 @@ def compare_two_sorters(sorting1, sorting2, sorting1_name=None, sorting2_name=No
     sorting2_name: : str
         The name of sorter 2
     delta_time: float
-        Number of ms to consider coincident spikes (default 0.3 ms)
+        Number of ms to consider coincident spikes (default 0.4 ms)
     sampling_frequency: float
         Optional sampling frequency in Hz when not included in sorting        
     min_accuracy: float

@@ -10,9 +10,10 @@ from .comparisontools import _perf_keys
 from .groundtruthcomparison import compare_sorter_to_ground_truth
 
 from .studytools import (setup_comparison_study, run_study_sorters, get_rec_names,
-                         get_recordings, copy_sortings_to_npz, iter_computed_names,
+                         get_one_recording, copy_sortings_to_npz, iter_computed_names,
                          iter_computed_sorting, collect_run_times)
 
+import spiketoolkit as st
 
 class GroundTruthStudy:
     def __init__(self, study_folder=None):
@@ -52,8 +53,8 @@ class GroundTruthStudy:
                     engine='loop', engine_kargs={}, verbose=False):
         run_study_sorters(self.study_folder, sorter_list, sorter_params=sorter_params,
                           engine=engine, engine_kargs=engine_kargs, verbose=verbose)
-
-    def get_ground_truth(self, rec_name=None):
+    
+    def _check_rec_name(self, rec_name):
         if not self._is_scanned:
             self.scan_folder()
         if len(self.rec_names) > 1 and rec_name is None:
@@ -62,18 +63,25 @@ class GroundTruthStudy:
             rec_name = self.rec_names[0]
         else:
             rec_name = self.rec_names[self.rec_names.index(rec_name)]
+        return rec_name
+    
+    def get_ground_truth(self, rec_name=None):
+        rec_name = self._check_rec_name(rec_name)
         sorting = se.NpzSortingExtractor(self.study_folder / 'ground_truth' / (rec_name + '.npz'))
         return sorting
-
+    
+    def get_recording(self, rec_name=None):
+        rec_name = self._check_rec_name(rec_name)
+        rec = get_one_recording(self.study_folder, rec_name)
+        return rec
+    
     def get_sorting(self, sort_name, rec_name=None):
-        if not self._is_scanned:
-            self.scan_folder()
-        if len(self.rec_names) > 1 and rec_name is None:
-            raise Exception("Pass 'rec_name' parameter to select which recording to use.")
+        rec_name = self._check_rec_name(rec_name)
+        
         selected_sorting = None
         if sort_name in self.sorter_names:
-            for rec_name, sorter_name, sorting in iter_computed_sorting(self.study_folder):
-                if sort_name == sorter_name:
+            for r_name, sorter_name, sorting in iter_computed_sorting(self.study_folder):
+                if sort_name == sorter_name and r_name == rec_name:
                     selected_sorting = sorting
         return selected_sorting
 
@@ -142,7 +150,7 @@ class GroundTruthStudy:
         perfs = self.aggregate_performance_by_units()
         
         dataframes['perf_by_units'] = perfs.reset_index()
-        # dataframes['perf_pooled_with_average'] = perfs.reset_index().groupby(['rec_name', 'sorter_name']).mean().reset_index()
+        # dataframes['perf_pooled_with_average'] = perfs.reset_index().groupby(['rec_name', 'sorter_name']).mean().reset_index()
         dataframes['count_units'] = self.aggregate_count_units(**karg_thresh).reset_index()
 
         if copy_into_folder:
@@ -154,3 +162,37 @@ class GroundTruthStudy:
                 df.to_csv(str(tables_folder / (name + '.csv')), sep='\t', index=False)
 
         return dataframes
+    
+    def _compute_snr(self, rec_name, **snr_kargs):
+        #Â print('compute SNR', rec_name)
+        rec = self.get_recording(rec_name)
+        gt_sorting = self.get_ground_truth(rec_name)
+        
+        snr_list = st.validation.compute_snrs(gt_sorting, rec, unit_ids=None, save_as_property=False, **snr_kargs)
+        
+        snr = pd.DataFrame(index=gt_sorting.get_unit_ids(), columns=['snr'])
+        snr.index.name = 'gt_unit_id'
+        snr.loc[:, 'snr'] = snr_list
+        
+        return snr
+    
+    def get_units_snr(self, rec_name=None):
+        """
+        Load or compute units SNR for a given recording.
+        """
+        rec_name = self._check_rec_name(rec_name)
+
+        metrics_folder = self.study_folder / 'metrics'
+        if not(os.path.exists(metrics_folder)):
+            os.makedirs(str(metrics_folder))
+        filename = metrics_folder / ('SNR '+ rec_name+'.txt')
+
+        if os.path.exists(filename):
+            snr = pd.read_csv(filename, sep='\t', index_col=None)
+            snr = snr.set_index('gt_unit_id')
+        else:
+            snr = self._compute_snr(rec_name)
+            snr.reset_index().to_csv(filename, sep='\t', index=False)
+        
+        return snr
+
