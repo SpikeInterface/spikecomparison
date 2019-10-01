@@ -29,7 +29,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
     """
 
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
-                 delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=0.2,
+                 delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False,
+                 bad_oversplit_threshold=0.2, bad_overmerged_threshold=0.4,
                  n_jobs=-1, match_mode ='hungarian', compute_labels=False, verbose=False):
 
         if gt_name is None:
@@ -40,7 +41,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
                                 delta_time=delta_time, sampling_frequency=sampling_frequency, min_accuracy=min_accuracy, n_jobs=n_jobs,
                                 verbose=verbose)
         self.exhaustive_gt = exhaustive_gt
-        self._bad_redundant_threshold = bad_redundant_threshold
+        self._bad_oversplit_threshold = bad_oversplit_threshold
+        self._bad_overmerged_threshold = bad_overmerged_threshold
 
         assert match_mode in ['hungarian', 'best']
         self.match_mode = match_mode
@@ -56,8 +58,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         # confusion matrix is compute on demand
         self._confusion_matrix = None
         
-        
-    
+
     def get_labels1(self, unit_id):
         if self._labels_st1 is None:
             self._do_score_labels()
@@ -99,7 +100,6 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         self.count_score = do_count_score(self.event_counts1, self.event_counts2, 
                             match_12, self.match_event_count)
 
-
     def _do_confusion_matrix(self):
         if self._verbose:
             print("Computing confusion matrix...")
@@ -128,9 +128,6 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             self._do_confusion_matrix()
         return self._confusion_matrix
 
-
-
-
     def _do_score_labels(self):
         assert self.match_mode == 'hungarian',\
                     'Labels (TP, FP, FN) can be computed only with hungarian match'            
@@ -140,7 +137,6 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         
         self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
                                                              self.delta_frames, self.hungarian_match_12, True)
-
 
     def get_performance(self, method='by_unit', output='pandas'):
         """
@@ -200,7 +196,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             txt = template_txt_performance.format(method=method, **perf.to_dict())
             print(txt)
 
-    def print_summary(self, min_redundant_agreement=0.4, **kargs_well_detected):
+    def print_summary(self, min_oversplit_agreement=0.4, **kwargs_well_detected):
         """
         Print a global performance summary that depend on the context:
           * exhaustive= True/False
@@ -213,8 +209,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         d = dict(
             num_gt=len(self.unit1_ids),
             num_tested=len(self.unit2_ids),
-            num_well_detected=self.count_well_detected_units(**kargs_well_detected),
-            num_redundant=self.count_redundant_units(),
+            num_well_detected=self.count_well_detected_units(**kwargs_well_detected),
+            num_oversplit=self.count_oversplit_units(),
         )
 
         if self.exhaustive_gt:
@@ -241,13 +237,13 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         
         If several thresh are given the the intersect of selection is kept.
         
-        For instance threholds = {'accuracy':0.9, 'miss_rate':0.1 }
+        For instance thresholds = {'accuracy':0.9, 'miss_rate':0.1 }
         give units with accuracy>0.9 AND miss<0.1
         Parameters
         ----------
         **thresholds : dict
             A dict that contains some threshold of columns of perf Dataframe.
-            If sevral threhold they are combined.
+            If several threshold are given, they are combined.
         """
         if len(thresholds) == 0:
             thresholds = {'accuracy': 0.95}
@@ -256,7 +252,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         _below = ['false_discovery_rate', 'miss_rate']
 
         perf = self.get_performance(method='by_unit')
-        keep = perf['accuracy'] >= 0  # tale all
+        keep = perf['accuracy'] >= 0  # take all
 
         for col, thresh in thresholds.items():
             if col in _above:
@@ -268,14 +264,14 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
         return perf[keep].index.tolist()
 
-    def count_well_detected_units(self, **kargs):
+    def count_well_detected_units(self, **kwargs):
         """
         Count how many well detected units.
         Kargs are the same as get_well_detected_units.
         """
-        return len(self.get_well_detected_units(**kargs))
+        return len(self.get_well_detected_units(**kwargs))
 
-    def get_false_positive_units(self, bad_redundant_threshold=None):
+    def get_false_positive_units(self, bad_oversplit_threshold=None):
         """
         Return units list of "false positive units" from tested_sorting.
         
@@ -286,15 +282,15 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
         Parameters
         ----------
-        bad_redundant_threshold: float (default 0.2)
+        bad_oversplit_threshold: float (default 0.2)
             The minimum agreement between gt and tested units
-            that are best match to be counted as "false positive" units and not "redundant".
+            that are best match to be counted as "false positive" units and not "oversplit".
 
         """
         assert self.exhaustive_gt, 'false_positive_units list is valid only if exhaustive_gt=True'
 
-        if bad_redundant_threshold is not None:
-            self._bad_redundant_threshold = bad_redundant_threshold
+        if bad_oversplit_threshold is not None:
+            self._bad_oversplit_threshold = bad_oversplit_threshold
 
         matched_units2 = list(self.hungarian_match_12.values)
         false_positive_ids = []
@@ -305,53 +301,86 @@ class GroundTruthComparison(BaseTwoSorterComparison):
                 else:
                     u1 = self.best_match_21[u2]
                     score = self.agreement_scores.at[u1, u2]
-                    if score < self._bad_redundant_threshold:
+                    if score < self._bad_oversplit_threshold:
                         false_positive_ids.append(u2)
 
         return false_positive_ids
 
-    def count_false_positive_units(self, bad_redundant_threshold=None):
+    def count_false_positive_units(self, bad_oversplit_threshold=None):
         """
-        See get_false_positive_units.
+        See get_false_positive_units().
         """
-        return len(self.get_false_positive_units(bad_redundant_threshold))
+        return len(self.get_false_positive_units(bad_oversplit_threshold))
 
-    def get_redundant_units(self, bad_redundant_threshold=None):
+    def get_oversplit_units(self, bad_oversplit_threshold=None):
         """
-        Return "redundant units"
+        Return "oversplit units"
         
         
-        "redundant units" are defined as units in tested
+        "oversplit units" are defined as units in tested
         that match a GT units with a big agreement score
         but it is not the best match.
         In other world units in GT that detected twice or more.
         
         Parameters
         ----------
-        bad_redundant_threshold=None: float (default 0.2)
+        bad_oversplit_threshold=None: float (default 0.2)
             The minimum agreement between gt and tested units
-            that are best match to be counted as "redundant" unit and not "false positive".
+            that are best match to be counted as "oversplit" unit and not "false positive".
         
         """
-        if bad_redundant_threshold is not None:
-            self._bad_redundant_threshold = bad_redundant_threshold
+        if bad_oversplit_threshold is not None:
+            self._bad_oversplit_threshold = bad_oversplit_threshold
         matched_units2 = list(self.hungarian_match_12.values)
-        redundant_ids = []
+        oversplit_ids = []
         for u2 in self.unit2_ids:
             if u2 not in matched_units2 and self.best_match_21[u2] != -1:
                 u1 = self.best_match_21[u2]
                 if u2 != self.best_match_12[u1]:
                     score = self.agreement_scores.at[u1, u2]
-                    if score >= self._bad_redundant_threshold:
-                        redundant_ids.append(u2)
+                    if score >= self._bad_oversplit_threshold:
+                        oversplit_ids.append(u2)
 
-        return redundant_ids
+        return oversplit_ids
 
-    def count_redundant_units(self, bad_redundant_threshold=None):
+    def count_oversplit_units(self, bad_oversplit_threshold=None):
         """
-        See get_redundant_units.
+        See get_oversplit_units().
         """
-        return len(self.get_redundant_units(bad_redundant_threshold=bad_redundant_threshold))
+        return len(self.get_oversplit_units(bad_oversplit_threshold=bad_oversplit_threshold))
+
+    def get_overmerged_units(self, bad_overmerged_threshold=None):
+        """
+        Return "oversplit units"
+
+
+        "oversplit units" are defined as units in tested
+        that match a GT units with a big agreement score
+        but it is not the best match.
+        In other world units in GT that detected twice or more.
+
+        Parameters
+        ----------
+        bad_oversplit_threshold=None: float (default 0.2)
+            The minimum agreement between gt and tested units
+            that are best match to be counted as "oversplit" unit and not "false positive".
+
+        """
+        if bad_overmerged_threshold is not None:
+            self._bad_overmerged_threshold = bad_overmerged_threshold
+        overmerged_ids = []
+        for u2 in self.unit2_ids:
+            scores = self.agreement_scores.at[:, u2]
+            if len(np.where(scores > self._bad_overmerged_threshold)[0]) > 1:
+                overmerged_ids.append(u2)
+
+        return overmerged_ids
+
+    def count_overmerged_units(self, bad_overmerged_threshold=None):
+        """
+        See get_overmerged_units().
+        """
+        return len(self.get_overmerged_units(bad_overmerged_threshold=bad_overmerged_threshold))
 
     def get_bad_units(self):
         """
@@ -360,7 +389,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         "bad units" are defined as units in tested that are not
         in the best match list of GT units.
         
-        So it is the union of "false positive units" + "redundant units".
+        So it is the union of "false positive units" + "oversplit units".
         
         Need exhaustive_gt=True
         """
@@ -398,7 +427,7 @@ _template_summary_part1 = """SUMMARY
 GT num_units: {num_gt}
 TESTED num_units: {num_tested}
 num_well_detected: {num_well_detected} 
-num_redundant: {num_redundant}
+num_oversplit: {num_oversplit}
 """
 
 _template_summary_part2 = """num_false_positive_units {num_false_positive_units}
@@ -408,7 +437,7 @@ num_bad: {num_bad}
 
 def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                                    delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True, match_mode='hungarian', 
-                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=False, verbose=False):
+                                   n_jobs=-1, bad_oversplit_threshold=0.2, compute_labels=False, verbose=False):
     '''
     Compares a sorter to a ground truth.
 
@@ -442,9 +471,9 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
         What is match used for counting : 'hugarian' or 'best match'.
     n_jobs: int
         Number of cores to use in parallel. Uses all available if -1
-    bad_redundant_threshold: float
+    bad_oversplit_threshold: float
         Agreement threshold below which a unit is considered 'false positive' and above
-        which is considered 'redundant' (default 0.2)
+        which is considered 'oversplit' (default 0.2)
     compute_labels: bool
         If True, labels are computed at instantiation (default True)
     verbose: bool
@@ -458,5 +487,5 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
     return GroundTruthComparison(gt_sorting=gt_sorting, tested_sorting=tested_sorting, gt_name=gt_name,
                                  tested_name=tested_name, delta_time=delta_time, sampling_frequency=sampling_frequency,
                                  min_accuracy=min_accuracy, exhaustive_gt=exhaustive_gt, n_jobs=n_jobs, match_mode='hungarian', 
-                                 compute_labels=compute_labels, bad_redundant_threshold=bad_redundant_threshold,
+                                 compute_labels=compute_labels, bad_oversplit_threshold=bad_oversplit_threshold,
                                  verbose=verbose)

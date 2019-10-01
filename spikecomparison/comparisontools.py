@@ -334,9 +334,9 @@ def make_hungarian_match(agreement_scores, min_accuracy):
     
     [inds1, inds2] = linear_sum_assignment(-scores)
     
-    hungarian_match_12 =  pd.Series(index=unit1_ids, dtype='int64')
+    hungarian_match_12 = pd.Series(index=unit1_ids, dtype='int64')
     hungarian_match_12[:] = -1
-    hungarian_match_21 =  pd.Series(index=unit2_ids, dtype='int64')
+    hungarian_match_21 = pd.Series(index=unit2_ids, dtype='int64')
     hungarian_match_21[:] = -1
     
     for i1, i2 in zip(inds1, inds2):
