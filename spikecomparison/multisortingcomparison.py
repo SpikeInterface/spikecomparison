@@ -21,7 +21,9 @@ class MultiSortingComparison(BaseComparison):
         return self.sorting_list
 
     def get_agreement_sorting(self, minimum_matching=0):
-        return AgreementSortingExtractor(self, min_agreement=minimum_matching)
+        sorting = AgreementSortingExtractor(self, min_agreement=minimum_matching)
+        sorting.set_sampling_frequency(self.sampling_frequency)
+        return sorting
 
     def _do_matching(self, verbose):
         # do pairwise matching
