@@ -56,9 +56,8 @@ def test_extract_sortings():
     perf = study.aggregate_performance_by_units()
     count_units = study.aggregate_count_units()
     dataframes = study.aggregate_dataframes()
-    
 
 
 if __name__ == '__main__':
-    #~ setup_module()
+    # ~ setup_module()
     test_extract_sortings()
