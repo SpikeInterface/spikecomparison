@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 
 from .basecomparison import BaseTwoSorterComparison
-from .comparisontools import (compute_agreement_score, do_score_labels, make_possible_match, 
-                make_best_match, make_hungarian_match, do_confusion_matrix, do_count_score, compute_performence)
+from .comparisontools import (compute_agreement_score, do_score_labels, make_possible_match,
+                              make_best_match, make_hungarian_match, do_confusion_matrix, do_count_score,
+                              compute_performence)
 
 
 # Note for dev,  because of  BaseTwoSorterComparison internally:
@@ -29,25 +30,28 @@ class GroundTruthComparison(BaseTwoSorterComparison):
     """
 
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
-                 delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False, bad_redundant_threshold=0.2,
-                 n_jobs=-1, match_mode ='hungarian', compute_labels=False, verbose=False):
+                 delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False,
+                 bad_redundant_threshold=0.2,
+                 n_jobs=-1, match_mode='hungarian', compute_labels=False, verbose=False):
 
         if gt_name is None:
             gt_name = 'ground truth'
         if tested_name is None:
             tested_name = 'tested'
-        BaseTwoSorterComparison.__init__(self, gt_sorting, tested_sorting, sorting1_name=gt_name, sorting2_name=tested_name,
-                                delta_time=delta_time, sampling_frequency=sampling_frequency, min_accuracy=min_accuracy, n_jobs=n_jobs,
-                                verbose=verbose)
+        BaseTwoSorterComparison.__init__(self, gt_sorting, tested_sorting, sorting1_name=gt_name,
+                                         sorting2_name=tested_name,
+                                         delta_time=delta_time, sampling_frequency=sampling_frequency,
+                                         min_accuracy=min_accuracy, n_jobs=n_jobs,
+                                         verbose=verbose)
         self.exhaustive_gt = exhaustive_gt
         self._bad_redundant_threshold = bad_redundant_threshold
 
         assert match_mode in ['hungarian', 'best']
         self.match_mode = match_mode
         self._compute_labels = compute_labels
-        
+
         self._do_count()
-        
+
         self._labels_st1 = None
         self._labels_st2 = None
         if self._compute_labels:
@@ -55,13 +59,11 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
         # confusion matrix is compute on demand
         self._confusion_matrix = None
-        
-        
-    
+
     def get_labels1(self, unit_id):
         if self._labels_st1 is None:
             self._do_score_labels()
-        
+
         if unit_id in self.sorting1.get_unit_ids():
             return self._labels_st1[unit_id]
         else:
@@ -70,7 +72,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
     def get_labels2(self, unit_id):
         if self._labels_st1 is None:
             self._do_score_labels()
-        
+
         if unit_id in self.sorting2.get_unit_ids():
             return self._labels_st2[unit_id]
         else:
@@ -82,8 +84,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
         self.possible_match_12, self.possible_match_21 = make_possible_match(self.agreement_scores, self.min_accuracy)
         self.best_match_12, self.best_match_21 = make_best_match(self.agreement_scores, self.min_accuracy)
-        self.hungarian_match_12, self.hungarian_match_21 = make_hungarian_match(self.agreement_scores, self.min_accuracy)
-
+        self.hungarian_match_12, self.hungarian_match_21 = make_hungarian_match(self.agreement_scores,
+                                                                                self.min_accuracy)
 
     def _do_count(self):
         """
@@ -96,9 +98,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             match_12 = self.hungarian_match_12
         elif self.match_mode == 'best':
             match_12 = self.best_match_12
-        self.count_score = do_count_score(self.event_counts1, self.event_counts2, 
-                            match_12, self.match_event_count)
-
+        self.count_score = do_count_score(self.event_counts1, self.event_counts2,
+                                          match_12, self.match_event_count)
 
     def _do_confusion_matrix(self):
         if self._verbose:
@@ -108,9 +109,10 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             match_12 = self.hungarian_match_12
         elif self.match_mode == 'best':
             match_12 = self.best_match_12
-            
-        self._confusion_matrix = do_confusion_matrix(self.event_counts1, self.event_counts2, match_12, self.match_event_count)
-        
+
+        self._confusion_matrix = do_confusion_matrix(self.event_counts1, self.event_counts2, match_12,
+                                                     self.match_event_count)
+
     def get_confusion_matrix(self):
         """
         Computes the confusion matrix.
@@ -128,19 +130,15 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             self._do_confusion_matrix()
         return self._confusion_matrix
 
-
-
-
     def _do_score_labels(self):
-        assert self.match_mode == 'hungarian',\
-                    'Labels (TP, FP, FN) can be computed only with hungarian match'            
+        assert self.match_mode == 'hungarian', \
+            'Labels (TP, FP, FN) can be computed only with hungarian match'
 
         if self._verbose:
             print("Adding labels...")
-        
+
         self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
                                                              self.delta_frames, self.hungarian_match_12, True)
-
 
     def get_performance(self, method='by_unit', output='pandas'):
         """
@@ -161,7 +159,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         perf: pandas dataframe/series (or dict)
             dataframe/series (based on 'output') with performance entries
         """
-        possibles = ('raw_count', 'by_unit',  'pooled_with_average')
+        possibles = ('raw_count', 'by_unit', 'pooled_with_average')
         if method not in possibles:
             raise Exception("'method' can be " + ' or '.join(possibles))
 
@@ -193,7 +191,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             d = {k: perf[k].tolist() for k in perf.columns}
             txt = template_txt_performance.format(method=method, **d)
             print(txt)
-        
+
         elif method == 'pooled_with_average':
             perf = self.get_performance(method=method, output='pandas')
             perf = perf * 100
@@ -379,7 +377,6 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         return len(self.get_bad_units())
 
 
-
 # usefull also for gathercomparison
 
 
@@ -391,7 +388,6 @@ PRECISION: {precision}
 FALSE DISCOVERY RATE: {false_discovery_rate}
 MISS RATE: {miss_rate}
 """
-
 
 _template_summary_part1 = """SUMMARY
 -------
@@ -407,7 +403,8 @@ num_bad: {num_bad}
 
 
 def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tested_name=None,
-                                   delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True, match_mode='hungarian', 
+                                   delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True,
+                                   match_mode='hungarian',
                                    n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=False, verbose=False):
     '''
     Compares a sorter to a ground truth.
@@ -457,6 +454,7 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
     '''
     return GroundTruthComparison(gt_sorting=gt_sorting, tested_sorting=tested_sorting, gt_name=gt_name,
                                  tested_name=tested_name, delta_time=delta_time, sampling_frequency=sampling_frequency,
-                                 min_accuracy=min_accuracy, exhaustive_gt=exhaustive_gt, n_jobs=n_jobs, match_mode='hungarian', 
+                                 min_accuracy=min_accuracy, exhaustive_gt=exhaustive_gt, n_jobs=n_jobs,
+                                 match_mode=match_mode,
                                  compute_labels=compute_labels, bad_redundant_threshold=bad_redundant_threshold,
                                  verbose=verbose)
