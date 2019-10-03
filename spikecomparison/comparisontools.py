@@ -32,7 +32,7 @@ def count_matching_events(times1, times2, delta=10):
     times_concat_sorted = times_concat[indices]
     membership_sorted = membership[indices]
     diffs = times_concat_sorted[1:] - times_concat_sorted[:-1]
-    inds = np.where((diffs <= delta) & (membership_sorted[0:-1] != membership_sorted[1:]))[0]
+    inds = np.where((diffs <= delta) & (membership_sorted[:-1] != membership_sorted[1:]))[0]
     if len(inds) == 0:
         return 0
     inds2 = np.where(inds[:-1] + 1 != inds[1:])[0]
@@ -405,13 +405,22 @@ def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclass
             lab_st1 = labels_st1[u1]
             lab_st2 = labels_st2[u2]
             mapped_st = sorting2.get_unit_spike_train(u2)
-            # from gtst: TP, TPO, TPSO, FN, FNO, FNSO
-            for sp_i, n_sp in enumerate(sts1[u1]):
-                matches = (np.abs(mapped_st.astype(int) - n_sp) <= delta_frames)
-                if np.sum(matches) > 0:
-                    if lab_st1[sp_i] != 'TP' and lab_st2[np.where(matches)[0][0]] != 'TP':
-                        lab_st1[sp_i] = 'TP'
-                        lab_st2[np.where(matches)[0][0]] = 'TP'
+            times_concat = np.concatenate((sts1[u1], mapped_st))
+            membership = np.concatenate((np.ones(sts1[u1].shape) * 1, np.ones(mapped_st.shape) * 2))
+            indices = times_concat.argsort()
+            times_concat_sorted = times_concat[indices]
+            membership_sorted = membership[indices]
+            diffs = times_concat_sorted[1:] - times_concat_sorted[:-1]
+            inds = np.where((diffs <= delta_frames) & (membership_sorted[:-1] != membership_sorted[1:]))[0]
+            if len(inds) > 0:
+                inds2 = inds[np.where(inds[:-1] + 1 != inds[1:])[0]] + 1
+                inds2 = np.concatenate((inds2, [inds[-1]]))
+                times_matched = times_concat_sorted[inds2]
+                # find and label closest spikes
+                ind_st1 = np.array([np.abs(sts1[u1] - tm).argmin() for tm in times_matched])
+                ind_st2 = np.array([np.abs(mapped_st - tm).argmin() for tm in times_matched])
+                lab_st1[ind_st1] = 'TP'
+                lab_st2[ind_st2] = 'TP'
         else:
             lab_st1 = np.array(['FN'] * len(sts1[u1]))
             labels_st1[u1] = lab_st1
@@ -436,16 +445,10 @@ def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclass
     for u1 in unit1_ids:
         lab_st1 = labels_st1[u1]
         lab_st1[lab_st1 == 'UNPAIRED'] = 'FN'
-        # for l_gt, lab in enumerate(lab_st1):
-        #     if lab == 'UNPAIRED':
-        #         lab_st1[l_gt] = 'FN'
 
     for u2 in unit2_ids:
         lab_st2 = labels_st2[u2]
         lab_st2[lab_st2 == 'UNPAIRED'] = 'FP'
-        # for l_gt, lab in enumerate(lab_st2):
-        #     if lab == 'UNPAIRED':
-        #         lab_st2[l_gt] = 'FP'
 
     return labels_st1, labels_st2
 

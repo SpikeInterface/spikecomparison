@@ -32,7 +32,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                  delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=False,
                  bad_redundant_threshold=0.2,
-                 n_jobs=-1, match_mode='hungarian', compute_labels=False, verbose=False):
+                 n_jobs=-1, match_mode='hungarian', compute_labels=False,
+                 compute_misclassifications=False, verbose=False):
 
         if gt_name is None:
             gt_name = 'ground truth'
@@ -44,6 +45,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
                                          min_accuracy=min_accuracy, n_jobs=n_jobs,
                                          verbose=verbose)
         self.exhaustive_gt = exhaustive_gt
+        self._compute_misclassifications = compute_misclassifications
         self._bad_redundant_threshold = bad_redundant_threshold
 
         assert match_mode in ['hungarian', 'best']
@@ -138,7 +140,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             print("Adding labels...")
 
         self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
-                                                             self.delta_frames, self.hungarian_match_12, True)
+                                                             self.delta_frames, self.hungarian_match_12,
+                                                             self._compute_misclassifications)
 
     def get_performance(self, method='by_unit', output='pandas'):
         """
@@ -405,7 +408,8 @@ num_bad: {num_bad}
 def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                                    delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, exhaustive_gt=True,
                                    match_mode='hungarian',
-                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=False, verbose=False):
+                                   n_jobs=-1, bad_redundant_threshold=0.2, compute_labels=False,
+                                   compute_misclassifications=False, verbose=False):
     '''
     Compares a sorter to a ground truth.
 
@@ -443,7 +447,9 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
         Agreement threshold below which a unit is considered 'false positive' and above
         which is considered 'redundant' (default 0.2)
     compute_labels: bool
-        If True, labels are computed at instantiation (default True)
+        If True, labels are computed at instantiation (default False)
+    compute_misclassifications: bool
+        If True, misclassifications are computed at instantiation (default False)
     verbose: bool
         If True, output is verbose
     Returns
@@ -456,5 +462,6 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
                                  tested_name=tested_name, delta_time=delta_time, sampling_frequency=sampling_frequency,
                                  min_accuracy=min_accuracy, exhaustive_gt=exhaustive_gt, n_jobs=n_jobs,
                                  match_mode=match_mode,
-                                 compute_labels=compute_labels, bad_redundant_threshold=bad_redundant_threshold,
+                                 compute_labels=compute_labels, compute_misclassifications=compute_misclassifications,
+                                 bad_redundant_threshold=bad_redundant_threshold,
                                  verbose=verbose)
