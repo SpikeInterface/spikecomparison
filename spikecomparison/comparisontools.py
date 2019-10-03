@@ -151,7 +151,7 @@ def make_match_count_matrix(sorting1, sorting2, delta_frames, n_jobs=1):
 def make_agreement_scores(sorting1, sorting2, delta_frames, n_jobs=1):
     """
     Make the agreement matrix.
-    No threshold (min_accuracy) is applied at this step.
+    No threshold (min_score) is applied at this step.
     
     Note : this computation is symetric.
     Inverting sorting1 and sorting2 give the transposed matrix.
@@ -218,9 +218,9 @@ def make_agreement_scores_from_count(match_event_count, event_counts1, event_cou
     return agreement_scores
 
 
-def make_possible_match(agreement_scores, min_accuracy):
+def make_possible_match(agreement_scores, min_score):
     """
-    Given an agreement matrix and a min_accuracy threhold.
+    Given an agreement matrix and a min_score threshold.
     Return as a dict all possible match for each spiketrain in each side.
     
     Note : this is symmetric.
@@ -230,7 +230,7 @@ def make_possible_match(agreement_scores, min_accuracy):
     ----------
     agreement_scores: pd.DataFrame
     
-    min_accuracy: float
+    min_score: float
     
     
     Returns
@@ -243,9 +243,9 @@ def make_possible_match(agreement_scores, min_accuracy):
     unit1_ids = np.array(agreement_scores.index)
     unit2_ids = np.array(agreement_scores.columns)
 
-    # threhold the matrix
+    # threshold the matrix
     scores = agreement_scores.values.copy()
-    scores[scores < min_accuracy] = 0
+    scores[scores < min_score] = 0
 
     possible_match_12 = {}
     for i1, u1 in enumerate(unit1_ids):
@@ -260,9 +260,9 @@ def make_possible_match(agreement_scores, min_accuracy):
     return possible_match_12, possible_match_21
 
 
-def make_best_match(agreement_scores, min_accuracy):
+def make_best_match(agreement_scores, min_score):
     """
-    Given an agreement matrix and a min_accuracy threhold.
+    Given an agreement matrix and a min_score threshold.
     return a dict a best match for each units independently of others.
     
     Note : this is symmetric.
@@ -271,7 +271,7 @@ def make_best_match(agreement_scores, min_accuracy):
     ----------
     agreement_scores: pd.DataFrame
     
-    min_accuracy: float
+    min_score: float
     
     
     Returns
@@ -290,19 +290,25 @@ def make_best_match(agreement_scores, min_accuracy):
     best_match_12 = pd.Series(index=unit1_ids, dtype='int64')
     for i1, u1 in enumerate(unit1_ids):
         ind_max = np.argmax(scores[i1, :])
-        best_match_12[u1] = unit2_ids[ind_max]
+        if scores[i1, ind_max] >= min_score:
+            best_match_12[u1] = unit2_ids[ind_max]
+        else:
+            best_match_12[u1] = -1
 
     best_match_21 = pd.Series(index=unit2_ids, dtype='int64')
     for i2, u2 in enumerate(unit2_ids):
         ind_max = np.argmax(scores[:, i2])
-        best_match_21[u2] = unit1_ids[ind_max]
+        if scores[ind_max, i2] >= min_score:
+            best_match_21[u2] = unit1_ids[ind_max]
+        else:
+            best_match_21[u2] = -1
 
     return best_match_12, best_match_21
 
 
-def make_hungarian_match(agreement_scores, min_accuracy):
+def make_hungarian_match(agreement_scores, min_score):
     """
-    Given an agreement matrix and a min_accuracy threhold.
+    Given an agreement matrix and a min_score threshold.
     return the "optimal" match with the "hungarian" algo.
     This use internally the scipy.optimze.linear_sum_assignment implementation.
     
@@ -310,7 +316,7 @@ def make_hungarian_match(agreement_scores, min_accuracy):
     ----------
     agreement_scores: pd.DataFrame
     
-    min_accuracy: float
+    min_score: float
     
     
     Returns
@@ -323,9 +329,9 @@ def make_hungarian_match(agreement_scores, min_accuracy):
     unit1_ids = np.array(agreement_scores.index)
     unit2_ids = np.array(agreement_scores.columns)
 
-    # threhold the matrix
+    # threshold the matrix
     scores = agreement_scores.values.copy()
-    scores[scores < min_accuracy] = 0
+    scores[scores < min_score] = 0
 
     [inds1, inds2] = linear_sum_assignment(-scores)
 
@@ -337,7 +343,7 @@ def make_hungarian_match(agreement_scores, min_accuracy):
     for i1, i2 in zip(inds1, inds2):
         u1 = unit1_ids[i1]
         u2 = unit2_ids[i2]
-        if agreement_scores.at[u1, u2] >= min_accuracy:
+        if agreement_scores.at[u1, u2] >= min_score:
             hungarian_match_12[u1] = u2
             hungarian_match_21[u2] = u1
 

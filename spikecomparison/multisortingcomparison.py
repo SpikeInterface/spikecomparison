@@ -10,11 +10,12 @@ import networkx as nx
 
 class MultiSortingComparison(BaseComparison):
     def __init__(self, sorting_list, name_list=None, delta_time=0.4, sampling_frequency=None,
-                 min_accuracy=0.5, n_jobs=-1, verbose=False):
+                 match_score=0.5, chance_score=0.1, n_jobs=-1, verbose=False):
 
         BaseComparison.__init__(self, sorting_list, name_list=name_list,
                                 delta_time=delta_time, sampling_frequency=sampling_frequency,
-                                min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
+                                match_score=match_score, chance_score=chance_score,
+                                n_jobs=n_jobs, verbose=verbose)
         self._do_matching(verbose)
 
     def get_sorting_list(self):
@@ -40,7 +41,7 @@ class MultiSortingComparison(BaseComparison):
                                                   sorting2_name=self.name_list[j],
                                                   delta_time=self.delta_time,
                                                   sampling_frequency=self.sampling_frequency,
-                                                  min_accuracy=self.min_accuracy,
+                                                  match_score=self.match_score,
                                                   n_jobs=self._n_jobs,
                                                   verbose=False)
                 self.comparisons.append(comp)
@@ -252,7 +253,7 @@ class AgreementSortingExtractor(se.SortingExtractor):
         return np.array(self._msc._spiketrains[list(self._msc._new_units.keys()).index(unit_id)])
 
 
-def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, min_accuracy=0.5,
+def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, match_score=0.5, chance_score=0.1,
                              n_jobs=-1, sampling_frequency=None, verbose=False):
     '''
     Compares multiple spike sorter outputs.
@@ -270,8 +271,10 @@ def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, min_a
         List of spike sorter names. If not given, sorters are named as 'sorter0', 'sorter1', 'sorter2', etc.
     delta_time: float
         Number of ms to consider coincident spikes (default 0.4 ms)
-    min_accuracy: float
+    match_score: float
         Minimum agreement score to match units (default 0.5)
+    chance_score: float
+        Minimum agreement score to for a possible match (default 0.1)
     n_jobs: int
        Number of cores to use in parallel. Uses all availible if -1
     sampling_frequency: float
@@ -285,5 +288,5 @@ def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, min_a
         MultiSortingComparison object with the multiple sorter comparison
     '''
     return MultiSortingComparison(sorting_list=sorting_list, name_list=name_list, delta_time=delta_time,
-                                  min_accuracy=min_accuracy, n_jobs=n_jobs, sampling_frequency=sampling_frequency,
-                                  verbose=verbose)
+                                  match_score=match_score, chance_score=chance_score, n_jobs=n_jobs,
+                                  sampling_frequency=sampling_frequency, verbose=verbose)
