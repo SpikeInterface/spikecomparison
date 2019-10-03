@@ -290,18 +290,12 @@ def make_best_match(agreement_scores, min_accuracy):
     best_match_12 = pd.Series(index=unit1_ids, dtype='int64')
     for i1, u1 in enumerate(unit1_ids):
         ind_max = np.argmax(scores[i1, :])
-        if scores[i1, ind_max] >= min_accuracy:
-            best_match_12[u1] = unit2_ids[ind_max]
-        else:
-            best_match_12[u1] = -1
+        best_match_12[u1] = unit2_ids[ind_max]
 
     best_match_21 = pd.Series(index=unit2_ids, dtype='int64')
     for i2, u2 in enumerate(unit2_ids):
         ind_max = np.argmax(scores[:, i2])
-        if scores[ind_max, i2] >= min_accuracy:
-            best_match_21[u2] = unit1_ids[ind_max]
-        else:
-            best_match_21[u2] = -1
+        best_match_21[u2] = unit1_ids[ind_max]
 
     return best_match_12, best_match_21
 
