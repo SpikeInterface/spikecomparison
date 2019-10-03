@@ -138,7 +138,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             print("Adding labels...")
 
         self._labels_st1, self._labels_st2 = do_score_labels(self.sorting1, self.sorting2,
-                                                             self.delta_frames, self.hungarian_match_12, True)
+                                                             self.delta_frames, self.hungarian_match_12, label_misclassification=False)
 
     def get_performance(self, method='by_unit', output='pandas'):
         """
