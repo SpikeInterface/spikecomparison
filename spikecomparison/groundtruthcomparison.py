@@ -143,6 +143,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
                                                              self.delta_frames, self.hungarian_match_12,
                                                              self._compute_misclassifications)
 
+
     def get_performance(self, method='by_unit', output='pandas'):
         """
         Get performance rate with several method:
