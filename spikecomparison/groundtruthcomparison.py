@@ -229,28 +229,17 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
     def get_well_detected_units(self, well_detected_score=None):
         """
-        Get the units in GT that are well detected with a comninaison a treshold level
-        on some columns (accuracy, recall, precision, miss_rate, ...):
-        
-        
-        
-        By default threshold is {'accuray'=0.95} meaning that all units with
-        accuracy above 0.95 are selected.
-        
-        For some thresholds columns units are below the threshold for instance
-        'miss_rate', 'false_discovery_rate'
-        
-        If several thresh are given the the intersect of selection is kept.
-        
-        For instance thresholds = {'accuracy':0.9, 'miss_rate':0.1 }
-        give units with accuracy>0.9 AND miss<0.1
+        Return units list of "well detected units" from tested_sorting.
+
+        "well detected units" ara defined as units in tested that
+        are well matched to GT units.
+
         Parameters
         ----------
-        **thresholds : dict
-            A dict that contains some threshold of columns of perf Dataframe.
-            If several threshold are given, they are combined.
+        well_detected_score: float (default 0.8)
+            The agreement score above which tested units
+            are counted as "well detected".
         """
-        # PROPOSAL: simplify - only use ACCURACY
         if well_detected_score is not None:
             self.well_detected_score = well_detected_score
 
@@ -264,25 +253,6 @@ class GroundTruthComparison(BaseTwoSorterComparison):
                     well_detected_ids.append(u2)
 
         return well_detected_ids
-
-        # if len(thresholds) == 0:
-        #     thresholds = {'accuracy': 0.95}
-        #
-        # _above = ['accuracy', 'recall', 'precision']
-        # _below = ['false_discovery_rate', 'miss_rate']
-        #
-        # perf = self.get_performance(method='by_unit')
-        # keep = perf['accuracy'] >= 0  # tale all
-        #
-        # for col, thresh in thresholds.items():
-        #     if col in _above:
-        #         keep = keep & (perf[col] >= thresh)
-        #     elif col in _below:
-        #         keep = keep & (perf[col] <= thresh)
-        #     else:
-        #         raise ValueError('Threshold column do not exits', col)
-        #
-        # return perf[keep].index.tolist()
 
     def count_well_detected_units(self, well_detected_score):
         """
@@ -303,9 +273,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         Parameters
         ----------
         redundant_score: float (default 0.2)
-            The minimum agreement between gt and tested units
-            that are best match to be counted as "false positive" units and not "redundant".
-
+            The agreement score below which tested units
+            are counted as "false positive"" (and not "redundant").
         """
         assert self.exhaustive_gt, 'false_positive_units list is valid only if exhaustive_gt=True'
 
@@ -345,9 +314,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         Parameters
         ----------
         redundant_score=None: float (default 0.2)
-            The minimum agreement between gt and tested units
-            that are best match to be counted as "redundant" unit and not "false positive".
-        
+            The agreement score above which tested units
+            are counted as "redundant" (and not "false positive" ).
         """
         assert self.exhaustive_gt, 'redundant_units list is valid only if exhaustive_gt=True'
 
@@ -381,10 +349,9 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
         Parameters
         ----------
-        overmerged_score=None: float (default 0.4)
-            The minimum agreement between a tested unit and several two or more GT nits
-            to be counted as "overmerged".
-
+        overmerged_score: float (default 0.4)
+            Tested units with 2 or more agrement scores above 'overmerged_score'
+            are counted as "overmerged".
         """
         assert self.exhaustive_gt, 'overmerged_units list is valid only if exhaustive_gt=True'
 
