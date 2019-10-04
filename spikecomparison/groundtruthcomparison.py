@@ -27,7 +27,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
     def __init__(self, gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                  delta_time=0.4, sampling_frequency=None, match_score=0.5, well_detected_score=0.8,
-                 redundant_score=0.2, overmerged_score=0.4, chance_score=0.1, exhaustive_gt=False, n_jobs=-1,
+                 redundant_score=0.2, overmerged_score=0.2, chance_score=0.1, exhaustive_gt=False, n_jobs=-1,
                  match_mode='hungarian', compute_labels=False, compute_misclassifications=False, verbose=False):
 
         if gt_name is None:
@@ -426,9 +426,8 @@ num_bad: {num_bad}
 
 def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tested_name=None,
                                    delta_time=0.4, sampling_frequency=None, match_score=0.5, chance_score=0.1,
-                                   well_detected_score=0.8, redundant_score=0.2, overmerged_score=0.4,
-                                   exhaustive_gt=True,
-                                   match_mode='hungarian', n_jobs=-1, compute_labels=False,
+                                   well_detected_score=0.8, redundant_score=0.2, overmerged_score=0.2,
+                                   exhaustive_gt=True, match_mode='hungarian', n_jobs=-1, compute_labels=False,
                                    compute_misclassifications=False, verbose=False):
     '''
     Compares a sorter to a ground truth.
@@ -460,7 +459,7 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
     redundant_score: float
         Agreement score above which units are redundant (default 0.2)
     overmerged_score: float
-        Agreement score above which units can be overmerged (default 0.4)
+        Agreement score above which units can be overmerged (default 0.2)
     well_detected_score: float
         Agreement score above which units are well detected (default 0.8)
     exhaustive_gt: bool (default True)
@@ -481,7 +480,6 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
     -------
     sorting_comparison: SortingComparison
         The SortingComparison object
-
     '''
     return GroundTruthComparison(gt_sorting=gt_sorting, tested_sorting=tested_sorting, gt_name=gt_name,
                                  tested_name=tested_name, delta_time=delta_time, sampling_frequency=sampling_frequency,

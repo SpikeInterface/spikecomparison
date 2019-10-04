@@ -67,8 +67,8 @@ class BaseTwoSorterComparison(BaseComparison):
         name_list = [sorting1_name, sorting2_name]
 
         BaseComparison.__init__(self, sorting_list, name_list=name_list, delta_time=delta_time,
-                                sampling_frequency=sampling_frequency, match_score=0.5,
-                                chance_score=0.1, verbose=verbose)
+                                sampling_frequency=sampling_frequency, match_score=match_score,
+                                chance_score=chance_score, verbose=verbose)
 
         self.unit1_ids = self.sorting1.get_unit_ids()
         self.unit2_ids = self.sorting2.get_unit_ids()
