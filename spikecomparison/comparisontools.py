@@ -417,8 +417,8 @@ def do_score_labels(sorting1, sorting2, delta_frames, unit_map12, label_misclass
                 inds2 = np.concatenate((inds2, [inds[-1]]))
                 times_matched = times_concat_sorted[inds2]
                 # find and label closest spikes
-                ind_st1 = np.array([np.abs(sts1[u1].tolist() - tm).argmin() for tm in times_matched])
-                ind_st2 = np.array([np.abs(mapped_st.tolist() - tm).argmin() for tm in times_matched])
+                ind_st1 = np.array([np.abs(sts1[u1] - tm).argmin() for tm in times_matched])
+                ind_st2 = np.array([np.abs(mapped_st - tm).argmin() for tm in times_matched])
                 assert(len(np.unique(ind_st1)) == len(ind_st1))
                 assert(len(np.unique(ind_st2)) == len(ind_st2))
                 lab_st1[ind_st1] = 'TP'
