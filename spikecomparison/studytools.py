@@ -57,10 +57,10 @@ def setup_comparison_study(study_folder, gt_dict):
         prb_filename = study_folder / 'raw_files' / (rec_name + '.prb')
         json_filename = study_folder / 'raw_files' / (rec_name + '.json')
         num_chan = recording.get_num_channels()
-        chunksize = 2 ** 24 // num_chan
+        chunk_size = 2 ** 24 // num_chan
         sr = recording.get_sampling_frequency()
 
-        recording.write_to_binary_dat_format(raw_filename, time_axis=0, dtype='float32', chunksize=chunksize)
+        recording.write_to_binary_dat_format(raw_filename, time_axis=0, dtype='float32', chunk_size=chunk_size)
         recording.save_to_probe_file(prb_filename, format='spyking_circus')
         with open(json_filename, 'w', encoding='utf8') as f:
             info = dict(sample_rate=sr, num_chan=num_chan, dtype='float32', time_axis=0)
