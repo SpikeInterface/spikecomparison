@@ -416,6 +416,7 @@ GT num_units: {num_gt}
 TESTED num_units: {num_tested}
 num_well_detected: {num_well_detected} 
 num_redundant: {num_redundant}
+num_overmerged: {num_overmerged}
 """
 
 _template_summary_part2 = """num_false_positive_units {num_false_positive_units}
