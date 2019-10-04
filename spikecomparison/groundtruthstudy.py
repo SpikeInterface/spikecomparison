@@ -15,6 +15,7 @@ from .studytools import (setup_comparison_study, run_study_sorters, get_rec_name
 
 import spiketoolkit as st
 
+
 class GroundTruthStudy:
     def __init__(self, study_folder=None):
         self.study_folder = Path(study_folder)
@@ -53,7 +54,7 @@ class GroundTruthStudy:
                     engine='loop', engine_kargs={}, verbose=False):
         run_study_sorters(self.study_folder, sorter_list, sorter_params=sorter_params,
                           engine=engine, engine_kargs=engine_kargs, verbose=verbose)
-    
+
     def _check_rec_name(self, rec_name):
         if not self._is_scanned:
             self.scan_folder()
@@ -64,20 +65,20 @@ class GroundTruthStudy:
         else:
             rec_name = self.rec_names[self.rec_names.index(rec_name)]
         return rec_name
-    
+
     def get_ground_truth(self, rec_name=None):
         rec_name = self._check_rec_name(rec_name)
         sorting = se.NpzSortingExtractor(self.study_folder / 'ground_truth' / (rec_name + '.npz'))
         return sorting
-    
+
     def get_recording(self, rec_name=None):
         rec_name = self._check_rec_name(rec_name)
         rec = get_one_recording(self.study_folder, rec_name)
         return rec
-    
+
     def get_sorting(self, sort_name, rec_name=None):
         rec_name = self._check_rec_name(rec_name)
-        
+
         selected_sorting = None
         if sort_name in self.sorter_names:
             for r_name, sorter_name, sorting in iter_computed_sorting(self.study_folder):
@@ -106,7 +107,7 @@ class GroundTruthStudy:
         perf_by_units = []
         for rec_name, sorter_name, sorting in iter_computed_sorting(self.study_folder):
             comp = self.comparisons[(rec_name, sorter_name)]
-            
+
             perf = comp.get_performance(method='by_unit', output='pandas')
             perf['rec_name'] = rec_name
             perf['sorter_name'] = sorter_name
@@ -118,12 +119,12 @@ class GroundTruthStudy:
 
         return perf_by_units
 
-    def aggregate_count_units(self, **karg_thresh):
+    def aggregate_count_units(self, well_detected_score=None, redundant_score=None, overmerged_score=None):
         assert self.comparisons is not None, 'run_comparisons first'
 
         index = pd.MultiIndex.from_tuples(self.computed_names, names=['rec_name', 'sorter_name'])
 
-        count_units = pd.DataFrame(index=index, columns=['num_gt', 'num_sorter', 'num_well_detected', 'num_oversplit',
+        count_units = pd.DataFrame(index=index, columns=['num_gt', 'num_sorter', 'num_well_detected', 'num_redundant',
                                                          'num_overmerged'])
 
         if self.exhaustive_gt:
@@ -136,12 +137,13 @@ class GroundTruthStudy:
 
             count_units.loc[(rec_name, sorter_name), 'num_gt'] = len(gt_sorting.get_unit_ids())
             count_units.loc[(rec_name, sorter_name), 'num_sorter'] = len(sorting.get_unit_ids())
-            count_units.loc[(rec_name, sorter_name), 'num_well_detected'] = comp.count_well_detected_units(
-                **karg_thresh)
-            count_units.loc[(rec_name, sorter_name), 'num_oversplit'] = comp.count_oversplit_units()
-            count_units.loc[(rec_name, sorter_name), 'num_overmerged'] = comp.count_overmerged_units()
+            count_units.loc[(rec_name, sorter_name), 'num_well_detected'] = \
+                comp.count_well_detected_units(well_detected_score)
+            count_units.loc[(rec_name, sorter_name), 'num_redundant'] = comp.count_redundant_units(redundant_score)
+            count_units.loc[(rec_name, sorter_name), 'num_overmerged'] = comp.count_overmerged_units(overmerged_score)
             if self.exhaustive_gt:
-                count_units.loc[(rec_name, sorter_name), 'num_false_positive'] = comp.count_false_positive_units()
+                count_units.loc[(rec_name, sorter_name), 'num_false_positive'] = \
+                    comp.count_false_positive_units(redundant_score)
                 count_units.loc[(rec_name, sorter_name), 'num_bad'] = comp.count_bad_units()
 
         return count_units
@@ -150,7 +152,7 @@ class GroundTruthStudy:
         dataframes = {}
         dataframes['run_times'] = self.aggregate_run_times().reset_index()
         perfs = self.aggregate_performance_by_units()
-        
+
         dataframes['perf_by_units'] = perfs.reset_index()
         # dataframes['perf_pooled_with_average'] = perfs.reset_index().groupby(['rec_name', 'sorter_name']).mean().reset_index()
         dataframes['count_units'] = self.aggregate_count_units(**karg_thresh).reset_index()
@@ -164,20 +166,20 @@ class GroundTruthStudy:
                 df.to_csv(str(tables_folder / (name + '.csv')), sep='\t', index=False)
 
         return dataframes
-    
+
     def _compute_snr(self, rec_name, **snr_kargs):
-        # print('compute SNR', rec_name)
+        #  print('compute SNR', rec_name)
         rec = self.get_recording(rec_name)
         gt_sorting = self.get_ground_truth(rec_name)
-        
+
         snr_list = st.validation.compute_snrs(gt_sorting, rec, unit_ids=None, save_as_property=False, **snr_kargs)
-        
+
         snr = pd.DataFrame(index=gt_sorting.get_unit_ids(), columns=['snr'])
         snr.index.name = 'gt_unit_id'
         snr.loc[:, 'snr'] = snr_list
-        
+
         return snr
-    
+
     def get_units_snr(self, rec_name=None):
         """
         Load or compute units SNR for a given recording.
@@ -185,9 +187,9 @@ class GroundTruthStudy:
         rec_name = self._check_rec_name(rec_name)
 
         metrics_folder = self.study_folder / 'metrics'
-        if not(os.path.exists(metrics_folder)):
+        if not (os.path.exists(metrics_folder)):
             os.makedirs(str(metrics_folder))
-        filename = metrics_folder / ('SNR '+ rec_name+'.txt')
+        filename = metrics_folder / ('SNR ' + rec_name + '.txt')
 
         if os.path.exists(filename):
             snr = pd.read_csv(filename, sep='\t', index_col=None)
@@ -195,6 +197,5 @@ class GroundTruthStudy:
         else:
             snr = self._compute_snr(rec_name)
             snr.reset_index().to_csv(filename, sep='\t', index=False)
-        
-        return snr
 
+        return snr
