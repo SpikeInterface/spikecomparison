@@ -17,7 +17,7 @@ class BaseComparison:
     """
 
     def __init__(self, sorting_list, name_list=None, delta_time=0.4, sampling_frequency=None,
-                 min_accuracy=0.5, n_jobs=-1, verbose=False):
+                 match_score=0.5, chance_score=0.1, n_jobs=-1, verbose=False):
 
         self.sorting_list = sorting_list
         if name_list is None:
@@ -44,7 +44,8 @@ class BaseComparison:
         self.sampling_frequency = sampling_frequency
         self.delta_time = delta_time
         self.delta_frames = int(self.delta_time / 1000 * self.sampling_frequency)
-        self.min_accuracy = min_accuracy
+        self.match_score = match_score
+        self.chance_score = chance_score
         self._n_jobs = n_jobs
         self._verbose = verbose
 
@@ -55,7 +56,8 @@ class BaseTwoSorterComparison(BaseComparison):
     """
 
     def __init__(self, sorting1, sorting2, sorting1_name=None, sorting2_name=None,
-                 delta_time=0.4, sampling_frequency=None, min_accuracy=0.5, n_jobs=1, verbose=False):
+                 delta_time=0.4, sampling_frequency=None, match_score=0.5,
+                 chance_score=0.1, n_jobs=1, verbose=False):
 
         sorting_list = [sorting1, sorting2]
         if sorting1_name is None:
@@ -65,8 +67,8 @@ class BaseTwoSorterComparison(BaseComparison):
         name_list = [sorting1_name, sorting2_name]
 
         BaseComparison.__init__(self, sorting_list, name_list=name_list, delta_time=delta_time,
-                                sampling_frequency=sampling_frequency, min_accuracy=min_accuracy,
-                                n_jobs=n_jobs, verbose=verbose)
+                                sampling_frequency=sampling_frequency, match_score=0.5,
+                                chance_score=0.1, verbose=verbose)
 
         self.unit1_ids = self.sorting1.get_unit_ids()
         self.unit2_ids = self.sorting2.get_unit_ids()

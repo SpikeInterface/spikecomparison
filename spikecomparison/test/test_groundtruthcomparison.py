@@ -63,17 +63,17 @@ def test_compare_sorter_to_ground_truth():
     # test well detected units depending on thresholds
     good_units = sc.get_well_detected_units()  # tp_thresh=0.95 default value
     assert_array_equal(good_units, [0, ])
-    good_units = sc.get_well_detected_units(accuracy=0.95)
+    good_units = sc.get_well_detected_units(well_detected_score=0.95)
     assert_array_equal(good_units, [0, ])
-    good_units = sc.get_well_detected_units(accuracy=.6)
-    assert_array_equal(good_units, [0, 1])
-    good_units = sc.get_well_detected_units(false_discovery_rate=0.05)
-    assert_array_equal(good_units, [0, 1])
-    good_units = sc.get_well_detected_units(accuracy=0.95, false_discovery_rate=.05)  # combine thresh
-    assert_array_equal(good_units, [0])
+    good_units = sc.get_well_detected_units(well_detected_score=.6)
+    assert_array_equal(good_units, [0, 5])
+    # good_units = sc.get_well_detected_units(false_discovery_rate=0.05)
+    # assert_array_equal(good_units, [0, 1])
+    # good_units = sc.get_well_detected_units(accuracy=0.95, false_discovery_rate=.05)  # combine thresh
+    # assert_array_equal(good_units, [0])
 
     # count
-    num_ok = sc.count_well_detected_units(accuracy=0.95)
+    num_ok = sc.count_well_detected_units(well_detected_score=0.95)
     assert num_ok == 1
 
     # false_positive_units [11]
