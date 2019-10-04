@@ -480,7 +480,6 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
     -------
     sorting_comparison: SortingComparison
         The SortingComparison object
-
     '''
     return GroundTruthComparison(gt_sorting=gt_sorting, tested_sorting=tested_sorting, gt_name=gt_name,
                                  tested_name=tested_name, delta_time=delta_time, sampling_frequency=sampling_frequency,
