@@ -1,9 +1,9 @@
 """
-High level tools to run many groundtruth comparison with
+High level tools to run many ground-truth comparison with
 many sorter on many recordings and then collect and aggregate results
 in an easy way.
 
-The all mechanism is based on an intrinsinct organisation
+The all mechanism is based on an intrinsic organisation
 into a "study_folder" with several subfolder:
   * raw_files : contain a copy in binary format of recordings
   * sorter_folders : contains output of sorters
@@ -30,7 +30,7 @@ from .groundtruthcomparison import compare_sorter_to_ground_truth
 
 def setup_comparison_study(study_folder, gt_dict):
     """
-    Based on a dict of (recordnig, sorting) create the study folder.
+    Based on a dict of (recording, sorting) create the study folder.
 
 
     Parameters
@@ -57,13 +57,13 @@ def setup_comparison_study(study_folder, gt_dict):
         prb_filename = study_folder / 'raw_files' / (rec_name + '.prb')
         json_filename = study_folder / 'raw_files' / (rec_name + '.json')
         num_chan = recording.get_num_channels()
-        chunksize = 2 ** 24 // num_chan
+        chunk_size = 2 ** 24 // num_chan
         sr = recording.get_sampling_frequency()
 
-        recording.write_to_binary_dat_format(raw_filename, time_axis=0, dtype='float32', chunksize=chunksize)
+        recording.write_to_binary_dat_format(raw_filename, time_axis=0, dtype='float32', chunk_size=chunk_size)
         recording.save_to_probe_file(prb_filename, format='spyking_circus')
         with open(json_filename, 'w', encoding='utf8') as f:
-            info = dict(sample_rate=sr, num_chan=num_chan, dtype='float32', frames_first=True)
+            info = dict(sample_rate=sr, num_chan=num_chan, dtype='float32', time_axis=0)
             json.dump(info, f, indent=4)
 
         # write recording sorting_gt as with npz format
@@ -78,7 +78,7 @@ def setup_comparison_study(study_folder, gt_dict):
 def get_rec_names(study_folder):
     """
     Get list of keys of recordings.
-    Read from the 'names.txt' file in stufy folder.
+    Read from the 'names.txt' file in study folder.
 
     Parameters
     ----------
@@ -94,6 +94,35 @@ def get_rec_names(study_folder):
     with open(study_folder / 'names.txt', mode='r', encoding='utf8') as f:
         rec_names = f.read()[:-1].split('\n')
     return rec_names
+
+
+def get_one_recording(study_folder, rec_name):
+    """
+    Get one recording from its name
+
+    Parameters
+    ----------
+    study_folder: str
+        The study folder.
+    rec_name: str
+        The recording name
+    Returns
+    ----------
+
+    recording: RecordingExtractor
+        The recording.
+    
+    """
+    raw_filename = study_folder / 'raw_files' / (rec_name + '.dat')
+    prb_filename = study_folder / 'raw_files' / (rec_name + '.prb')
+    json_filename = study_folder / 'raw_files' / (rec_name + '.json')
+    with open(json_filename, 'r', encoding='utf8') as f:
+        info = json.load(f)
+    rec = se.BinDatRecordingExtractor(raw_filename, info['sample_rate'], info['num_chan'],
+                                      info['dtype'], time_axis=info['time_axis'])
+    rec = rec.load_probe_file(prb_filename)
+
+    return rec
 
 
 def get_recordings(study_folder):
@@ -119,17 +148,7 @@ def get_recordings(study_folder):
     rec_names = get_rec_names(study_folder)
     recording_dict = {}
     for rec_name in rec_names:
-        raw_filename = study_folder / 'raw_files' / (rec_name + '.dat')
-        prb_filename = study_folder / 'raw_files' / (rec_name + '.prb')
-        json_filename = study_folder / 'raw_files' / (rec_name + '.json')
-        with open(json_filename, 'r', encoding='utf8') as f:
-            info = json.load(f)
-
-        rec = se.BinDatRecordingExtractor(raw_filename, info['sample_rate'], info['num_chan'],
-                                          info['dtype'], frames_first=info['frames_first'])
-        rec_probe = rec.load_probe_file(prb_filename)
-
-        recording_dict[rec_name] = rec_probe
+        recording_dict[rec_name] = get_one_recording(study_folder, rec_name)
 
     return recording_dict
 
@@ -298,7 +317,6 @@ def aggregate_sorting_comparison(study_folder, exhaustive_gt=False):
     """
 
     study_folder = Path(study_folder)
-    sorter_folders = study_folder / 'sorter_folders'
 
     ground_truths = get_ground_truths(study_folder)
     results = collect_study_sorting(study_folder)

@@ -5,23 +5,28 @@ from .basecomparison import BaseTwoSorterComparison
 from .comparisontools import make_possible_match, make_best_match, make_hungarian_match
 
 
-
 class SymmetricSortingComparison(BaseTwoSorterComparison):
     """
     Class for symmetric comparison of two sorters when no assumption is done.
     """
+
     def __init__(self, sorting1, sorting2, sorting1_name=None, sorting2_name=None,
-                 delta_time=0.3, sampling_frequency=None, min_accuracy=0.5, n_jobs=-1, verbose=False):
-        BaseTwoSorterComparison.__init__(self, sorting1, sorting2, sorting1_name=sorting1_name, sorting2_name=sorting2_name, 
-            delta_time=delta_time, sampling_frequency=sampling_frequency, min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
+                 delta_time=0.4, sampling_frequency=None, match_score=0.5, chance_score=0.1,
+                 n_jobs=-1, verbose=False):
+        BaseTwoSorterComparison.__init__(self, sorting1, sorting2, sorting1_name=sorting1_name,
+                                         sorting2_name=sorting2_name,
+                                         delta_time=delta_time, sampling_frequency=sampling_frequency,
+                                         match_score=match_score, chance_score=chance_score,
+                                         n_jobs=n_jobs, verbose=verbose)
 
     def _do_matching(self):
         if self._verbose:
             print("Matching...")
 
-        self.possible_match_12, self.possible_match_21 = make_possible_match(self.agreement_scores, self.min_accuracy)
-        self.best_match_12, self.best_match_21 = make_best_match(self.agreement_scores, self.min_accuracy)
-        self.hungarian_match_12, self.hungarian_match_21 = make_hungarian_match(self.agreement_scores, self.min_accuracy)
+        self.possible_match_12, self.possible_match_21 = make_possible_match(self.agreement_scores, self.chance_score)
+        self.best_match_12, self.best_match_21 = make_best_match(self.agreement_scores, self.chance_score)
+        self.hungarian_match_12, self.hungarian_match_21 = make_hungarian_match(self.agreement_scores,
+                                                                                self.match_score)
 
     def get_mapped_sorting1(self):
         """
@@ -106,8 +111,8 @@ class MappedSortingExtractor(se.SortingExtractor):
             return None
 
 
-def compare_two_sorters(sorting1, sorting2, sorting1_name=None, sorting2_name=None, delta_time=0.3, 
-                        sampling_frequency=None, min_accuracy=0.5, n_jobs=-1, verbose=False):
+def compare_two_sorters(sorting1, sorting2, sorting1_name=None, sorting2_name=None, delta_time=0.4,
+                        sampling_frequency=None, match_score=0.5, chance_score=0.1, n_jobs=-1, verbose=False):
     '''
     Compares two spike sorter outputs.
 
@@ -129,11 +134,13 @@ def compare_two_sorters(sorting1, sorting2, sorting1_name=None, sorting2_name=No
     sorting2_name: : str
         The name of sorter 2
     delta_time: float
-        Number of ms to consider coincident spikes (default 0.3 ms)
+        Number of ms to consider coincident spikes (default 0.4 ms)
     sampling_frequency: float
         Optional sampling frequency in Hz when not included in sorting        
-    min_accuracy: float
+    match_score: float
         Minimum agreement score to match units (default 0.5)
+    chance_score: float
+        Minimum agreement score to for a possible match (default 0.1)
     n_jobs: int
         Number of cores to use in parallel. Uses all available if -1
     verbose: bool
@@ -145,5 +152,7 @@ def compare_two_sorters(sorting1, sorting2, sorting1_name=None, sorting2_name=No
 
     '''
     return SymmetricSortingComparison(sorting1=sorting1, sorting2=sorting2, sorting1_name=sorting1_name,
-                             sorting2_name=sorting2_name, delta_time=delta_time, sampling_frequency=sampling_frequency, 
-                             min_accuracy=min_accuracy, n_jobs=n_jobs, verbose=verbose)
+                                      sorting2_name=sorting2_name, delta_time=delta_time,
+                                      sampling_frequency=sampling_frequency,
+                                      match_score=match_score, chance_score=chance_score,
+                                      n_jobs=n_jobs, verbose=verbose)

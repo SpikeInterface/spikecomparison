@@ -1,4 +1,3 @@
-
 import os
 import shutil
 import time
@@ -7,15 +6,11 @@ import pickle
 import pytest
 
 from spikecomparison.studytools import (setup_comparison_study, run_study_sorters,
-                iter_computed_names, iter_computed_sorting)
+                                        iter_computed_names, iter_computed_sorting)
 
 import spikeextractors as se
 
-
-
-
 study_folder = 'test_TDC_vs_HS2/'
-
 
 
 def setup_module():
@@ -32,8 +27,8 @@ def _setup_comparison_study():
     rec1, gt_sorting1 = se.example_datasets.toy_example(num_channels=32, duration=30, seed=0)
 
     gt_dict = {
-        'toy_tetrode' : (rec0, gt_sorting0),
-        'toy_probe32' : (rec1, gt_sorting1),
+        'toy_tetrode': (rec0, gt_sorting0),
+        'toy_probe32': (rec1, gt_sorting1),
     }
 
     setup_comparison_study(study_folder, gt_dict)
@@ -46,14 +41,13 @@ def _run_study_sorters():
 
 def test_loops():
     names = list(iter_computed_names(study_folder))
-    #~ print(names)
+    # ~ print(names)
     for rec_name, sorter_name, sorting in iter_computed_sorting(study_folder):
         print(rec_name, sorter_name)
         print(sorting)
-    
-    
+
+
 if __name__ == '__main__':
     setup_module()
-    
-    test_loops()
 
+    test_loops()
