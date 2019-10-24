@@ -120,12 +120,8 @@ class GroundTruthComparison(BaseTwoSorterComparison):
 
         Returns
         ------
-        confusion_matrix: np.array
+        confusion_matrix: pandas.DataFrame
             The confusion matrix
-        st1_idxs: np.array
-            Array with order of units1 in confusion matrix
-        st2_idxs: np.array
-            Array with order of units2 in confusion matrix
         """
         if self._confusion_matrix is None:
             self._do_confusion_matrix()
