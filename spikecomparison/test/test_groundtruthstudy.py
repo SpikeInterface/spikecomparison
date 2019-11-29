@@ -47,7 +47,7 @@ def test_extract_sortings():
 
     for rec_name in study.rec_names:
         snr = study.get_units_snr(rec_name=rec_name)
-        print(snr)
+        # print(snr)
 
     study.copy_sortings()
     study.run_comparisons(exhaustive_gt=True)
@@ -59,5 +59,5 @@ def test_extract_sortings():
 
 
 if __name__ == '__main__':
-    # ~ setup_module()
+    #~ setup_module()
     test_extract_sortings()
