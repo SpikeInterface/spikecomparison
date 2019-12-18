@@ -20,12 +20,15 @@ import os
 import pandas as pd
 import spikeextractors as se
 
+from spikeextractors.extraction_tools import read_python
+
 from spikesorters.sorterlist import sorter_dict
 
 # TODO change this when sorters will be remove from toolkit
 from spikesorters import run_sorters, iter_output_folders, iter_sorting_output
 from .comparisontools import _perf_keys
 from .groundtruthcomparison import compare_sorter_to_ground_truth
+
 
 
 def setup_comparison_study(study_folder, gt_dict):
@@ -120,7 +123,8 @@ def get_one_recording(study_folder, rec_name):
         info = json.load(f)
     rec = se.BinDatRecordingExtractor(raw_filename, info['sample_rate'], info['num_chan'],
                                       info['dtype'], time_axis=info['time_axis'])
-    rec = rec.load_probe_file(prb_filename)
+    # rec = rec.load_probe_file(prb_filename)
+    load_probe_file_inplace(rec, prb_filename)
 
     return rec
 
@@ -418,3 +422,59 @@ def aggregate_performances_table(study_folder, exhaustive_gt=False, **karg_thres
     dataframes['perf_by_spiketrain'] = perf_by_spiketrain
 
     return dataframes
+
+
+
+
+def load_probe_file_inplace(recording, probe_file):
+    '''
+    This is a locally modified version of spikeextractor.extraction_tools.load_probe_file.
+    But it do load "in place" and do NOT return a SubRecordingExtractor.
+    
+    This is usefull to not copy local raw data for KS, KS2, TDC, KLUSTA.
+    
+    This is a simplified version where there is only one group and **all** channel 
+    of the file are in the groups.
+    
+    Work only for PRB file.
+    
+    Parameters
+    ----------
+    recording: RecordingExtractor
+        The recording extractor to channel information
+    probe_file: str
+        Path to probe file. Either .prb or .csv
+    verbose: bool
+        If True, output is verbose
+
+    Returns
+    ---------
+    
+    Nothing, inplace modification of RecordingExtractor
+    
+    '''
+    probe_file = Path(probe_file)
+    
+    assert probe_file.suffix == '.prb'
+    
+    
+    probe_dict = read_python(probe_file)
+    
+    assert 'channel_groups' in probe_dict.keys()
+    
+    assert len(probe_dict['channel_groups']) == 1, 'load_probe_file_inplace only for one group'
+    
+    cgroup_id = list(probe_dict['channel_groups'].keys())[0]
+    cgroup = probe_dict['channel_groups'][cgroup_id]
+    
+    channel_ids = cgroup['channels']
+    assert len(channel_ids) == len(recording.get_channel_ids())
+    # TODO assert equal array sorted
+    
+    for chan_id in channel_ids:
+        recording.set_channel_property(chan_id, 'group', int(cgroup_id))
+        recording.set_channel_property(chan_id, 'location', cgroup['geometry'][chan_id])
+
+
+
+
