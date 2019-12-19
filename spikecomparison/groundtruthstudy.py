@@ -53,7 +53,7 @@ class GroundTruthStudy:
     def run_sorters(self, sorter_list, sorter_params={}, mode='keep',
                     engine='loop', engine_kargs={}, verbose=False):
         run_study_sorters(self.study_folder, sorter_list, sorter_params=sorter_params,
-                          engine=engine, engine_kargs=engine_kargs, verbose=verbose)
+                        mode=mode, engine=engine, engine_kargs=engine_kargs, verbose=verbose)
 
     def _check_rec_name(self, rec_name):
         if not self._is_scanned:
