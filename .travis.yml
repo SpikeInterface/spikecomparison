@@ -21,7 +21,7 @@ install:
 - pip install https://github.com/SpikeInterface/spiketoolkit/archive/master.zip
 - pip install https://github.com/SpikeInterface/spikewidgets/archive/master.zip
 - pip install .
-- pip install PyQt5==1.14.0
+- pip install PyQt5==5.14.0
 - pip install tridesclous==1.4.2
 - pip install herdingspikes==0.3.2
 - pip install pytest==4.3
