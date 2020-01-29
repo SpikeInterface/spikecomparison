@@ -248,8 +248,8 @@ def copy_sortings_to_npz(study_folder):
         sorting = SorterClass.get_result_from_folder(output_folder)
         fname = rec_name + '[#]' + sorter_name
         se.NpzSortingExtractor.write_sorting(sorting, sorting_folders / (fname + '.npz'))
-        if os.path.exists(output_folder / 'run_log.txt'):
-            shutil.copyfile(output_folder / 'run_log.txt', sorting_folders / 'run_log' / (fname + '.txt'))
+        if os.path.exists(output_folder / 'spikeinterface_log.json'):
+            shutil.copyfile(output_folder / 'spikeinterface_log.json', sorting_folders / 'run_log' / (fname + '.json'))
 
 
 def iter_computed_names(study_folder):
@@ -288,10 +288,11 @@ def collect_run_times(study_folder):
 
     run_times = []
     for filename in os.listdir(log_folder):
-        if filename.endswith('.txt') and '[#]' in filename:
-            rec_name, sorter_name = filename.replace('.txt', '').split('[#]')
-            with open(log_folder / filename, mode='r') as logfile:
-                run_time = float(logfile.readline().replace('run_time:', ''))
+        if filename.endswith('.json') and '[#]' in filename:
+            rec_name, sorter_name = filename.replace('.json', '').split('[#]')
+            with open(log_folder / filename, encoding='utf8', mode='r') as logfile:
+                log = json.load(logfile)
+                run_time = log.get('run_time', None)
             run_times.append((rec_name, sorter_name, run_time))
 
     run_times = pd.DataFrame(run_times, columns=['rec_name', 'sorter_name', 'run_time'])
