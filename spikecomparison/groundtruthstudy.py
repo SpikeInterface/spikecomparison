@@ -139,9 +139,11 @@ class GroundTruthStudy:
             count_units.loc[(rec_name, sorter_name), 'num_sorter'] = len(sorting.get_unit_ids())
             count_units.loc[(rec_name, sorter_name), 'num_well_detected'] = \
                 comp.count_well_detected_units(well_detected_score)
-            count_units.loc[(rec_name, sorter_name), 'num_redundant'] = comp.count_redundant_units(redundant_score)
-            count_units.loc[(rec_name, sorter_name), 'num_overmerged'] = comp.count_overmerged_units(overmerged_score)
             if self.exhaustive_gt:
+                count_units.loc[(rec_name, sorter_name), 'num_overmerged'] = \
+                    comp.count_overmerged_units(overmerged_score)
+                count_units.loc[(rec_name, sorter_name), 'num_redundant'] = \
+                    comp.count_redundant_units(redundant_score)
                 count_units.loc[(rec_name, sorter_name), 'num_false_positive'] = \
                     comp.count_false_positive_units(redundant_score)
                 count_units.loc[(rec_name, sorter_name), 'num_bad'] = comp.count_bad_units()
