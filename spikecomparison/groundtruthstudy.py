@@ -184,7 +184,7 @@ class GroundTruthStudy:
 
         return snr
 
-    def get_units_snr(self, rec_name=None):
+    def get_units_snr(self, rec_name=None, **snr_kargs):
         """
         Load or compute units SNR for a given recording.
         """
@@ -199,7 +199,7 @@ class GroundTruthStudy:
             snr = pd.read_csv(filename, sep='\t', index_col=None)
             snr = snr.set_index('gt_unit_id')
         else:
-            snr = self._compute_snr(rec_name)
+            snr = self._compute_snr(rec_name, **snr_kargs)
             snr.reset_index().to_csv(filename, sep='\t', index=False)
         snr['rec_name'] = rec_name
         return snr
