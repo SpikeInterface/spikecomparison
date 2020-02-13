@@ -17,7 +17,7 @@ def make_sorting(times1, labels1, times2, labels2):
 def test_compare_sorter_to_ground_truth():
     # simple match
     gt_sorting, tested_sorting = make_sorting([100, 200, 300, 400, 500, 600], [0, 0, 1, 0, 1, 1],
-                                              [101, 201, 301, 302, 401, 501, 502, 900], [0, 0, 5, 6, 0, 5, 6, 11])
+                                              [101, 201, 301, 302, 401, 501, 502, 601, 900], [0, 0, 5, 6, 0, 5, 6, 5, 11])
 
     for match_mode in ('hungarian', 'best'):
 
@@ -27,7 +27,7 @@ def test_compare_sorter_to_ground_truth():
                                             match_mode=match_mode, compute_labels=compute_labels)
 
         assert_array_equal(sc.event_counts1.values, [3, 3])
-        assert_array_equal(sc.event_counts2.values, [3, 2, 2, 1])
+        assert_array_equal(sc.event_counts2.values, [3, 3, 2, 1])
 
         assert_array_equal(sc.possible_match_12[1], [5, 6])
 
@@ -41,7 +41,7 @@ def test_compare_sorter_to_ground_truth():
         assert_array_equal(scores.loc[ordered_scores.index, ordered_scores.columns], ordered_scores)
 
         assert sc.count_score.at[0, 'tp'] == 3
-        assert sc.count_score.at[1, 'tp'] == 2
+        assert sc.count_score.at[1, 'tp'] == 3
         assert sc.count_score.at[1, 'fn'] == 1
 
         sc._do_confusion_matrix()
