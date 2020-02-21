@@ -16,8 +16,8 @@ def make_sorting(times1, labels1, times2, labels2):
 
 def test_compare_sorter_to_ground_truth():
     # simple match
-    gt_sorting, tested_sorting = make_sorting([100, 200, 300, 400, 500, 600], [0, 0, 1, 0, 1, 1],
-                                              [101, 201, 301, 302, 401, 501, 502, 900], [0, 0, 5, 6, 0, 5, 6, 11])
+    gt_sorting, tested_sorting = make_sorting([100, 200, 300, 400, 500, 600, 700], [0, 0, 1, 0, 1, 1, 1],
+                                              [101, 201, 301, 302, 401, 501, 502, 601, 900], [0, 0, 5, 6, 0, 5, 6, 5, 11])
 
     for match_mode in ('hungarian', 'best'):
 
@@ -26,8 +26,8 @@ def test_compare_sorter_to_ground_truth():
         sc = compare_sorter_to_ground_truth(gt_sorting, tested_sorting, exhaustive_gt=True,
                                             match_mode=match_mode, compute_labels=compute_labels)
 
-        assert_array_equal(sc.event_counts1.values, [3, 3])
-        assert_array_equal(sc.event_counts2.values, [3, 2, 2, 1])
+        assert_array_equal(sc.event_counts1.values, [3, 4])
+        assert_array_equal(sc.event_counts2.values, [3, 3, 2, 1])
 
         assert_array_equal(sc.possible_match_12[1], [5, 6])
 
@@ -41,7 +41,7 @@ def test_compare_sorter_to_ground_truth():
         assert_array_equal(scores.loc[ordered_scores.index, ordered_scores.columns], ordered_scores)
 
         assert sc.count_score.at[0, 'tp'] == 3
-        assert sc.count_score.at[1, 'tp'] == 2
+        assert sc.count_score.at[1, 'tp'] == 3
         assert sc.count_score.at[1, 'fn'] == 1
 
         sc._do_confusion_matrix()
@@ -62,6 +62,7 @@ def test_compare_sorter_to_ground_truth():
 
     # test well detected units depending on thresholds
     good_units = sc.get_well_detected_units()  # tp_thresh=0.95 default value
+    print(good_units)
     assert_array_equal(good_units, [0, ])
     good_units = sc.get_well_detected_units(well_detected_score=0.95)
     assert_array_equal(good_units, [0, ])

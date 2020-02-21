@@ -53,7 +53,7 @@ class GroundTruthStudy:
     def run_sorters(self, sorter_list, sorter_params={}, mode='keep',
                     engine='loop', engine_kargs={}, verbose=False):
         run_study_sorters(self.study_folder, sorter_list, sorter_params=sorter_params,
-                          engine=engine, engine_kargs=engine_kargs, verbose=verbose)
+                        mode=mode, engine=engine, engine_kargs=engine_kargs, verbose=verbose)
 
     def _check_rec_name(self, rec_name):
         if not self._is_scanned:
@@ -139,9 +139,11 @@ class GroundTruthStudy:
             count_units.loc[(rec_name, sorter_name), 'num_sorter'] = len(sorting.get_unit_ids())
             count_units.loc[(rec_name, sorter_name), 'num_well_detected'] = \
                 comp.count_well_detected_units(well_detected_score)
-            count_units.loc[(rec_name, sorter_name), 'num_redundant'] = comp.count_redundant_units(redundant_score)
-            count_units.loc[(rec_name, sorter_name), 'num_overmerged'] = comp.count_overmerged_units(overmerged_score)
             if self.exhaustive_gt:
+                count_units.loc[(rec_name, sorter_name), 'num_overmerged'] = \
+                    comp.count_overmerged_units(overmerged_score)
+                count_units.loc[(rec_name, sorter_name), 'num_redundant'] = \
+                    comp.count_redundant_units(redundant_score)
                 count_units.loc[(rec_name, sorter_name), 'num_false_positive'] = \
                     comp.count_false_positive_units(redundant_score)
                 count_units.loc[(rec_name, sorter_name), 'num_bad'] = comp.count_bad_units()
@@ -182,7 +184,7 @@ class GroundTruthStudy:
 
         return snr
 
-    def get_units_snr(self, rec_name=None):
+    def get_units_snr(self, rec_name=None, **snr_kargs):
         """
         Load or compute units SNR for a given recording.
         """
@@ -197,7 +199,17 @@ class GroundTruthStudy:
             snr = pd.read_csv(filename, sep='\t', index_col=None)
             snr = snr.set_index('gt_unit_id')
         else:
-            snr = self._compute_snr(rec_name)
+            snr = self._compute_snr(rec_name, **snr_kargs)
             snr.reset_index().to_csv(filename, sep='\t', index=False)
-
+        snr['rec_name'] = rec_name
+        return snr
+    
+    def concat_all_snr(self):
+        snr = []
+        for rec_name in self.rec_names:
+            df = self.get_units_snr(rec_name)
+            df = df.reset_index()
+            snr.append(df)
+        snr = pd.concat(snr)
+        snr = snr.set_index(['rec_name', 'gt_unit_id'])
         return snr
