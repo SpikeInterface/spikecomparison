@@ -1,6 +1,8 @@
 import numpy as np
 import spikeextractors as se
-from scipy.optimize import linear_sum_assignment
+from pathlib import Path
+import json
+import os
 from .basecomparison import BaseComparison
 from .symmetricsortingcomparison import SymmetricSortingComparison
 from .comparisontools import compare_spike_trains
@@ -10,31 +12,113 @@ import networkx as nx
 
 class MultiSortingComparison(BaseComparison):
     def __init__(self, sorting_list, name_list=None, delta_time=0.4, sampling_frequency=None,
-                 match_score=0.5, chance_score=0.1, n_jobs=-1, verbose=False):
-
+                 match_score=0.5, chance_score=0.1, n_jobs=-1, verbose=False, do_matching=True):
         BaseComparison.__init__(self, sorting_list, name_list=name_list,
                                 delta_time=delta_time, sampling_frequency=sampling_frequency,
                                 match_score=match_score, chance_score=chance_score,
                                 n_jobs=n_jobs, verbose=verbose)
-        self._do_matching(verbose)
+        if do_matching:
+            self._do_comparison()
+            self._do_graph()
+            self._do_agreement()
 
     def get_sorting_list(self):
+        '''
+        Returns sorting list
+
+        Returns
+        -------
+        sorting_list: list
+            List of SortingExtractor objects
+        '''
         return self.sorting_list
 
     def get_agreement_sorting(self, minimum_matching=0):
+        '''
+        Returns AgreementSortingExtractor with units with a 'minimum_matching' agreement.
+
+        Parameters
+        ----------
+        minimum_matching: int
+            Minimum number of matches among sorters to include a unit
+
+        Returns
+        -------
+        agreement_sorting: AgreementSortingExtractor
+            The output AgreementSortingExtractor
+        '''
         sorting = AgreementSortingExtractor(self, min_agreement=minimum_matching)
         sorting.set_sampling_frequency(self.sampling_frequency)
         return sorting
 
-    def _do_matching(self, verbose):
+    def compute_subgraphs(self):
+        '''
+        Computes subgraphs of connected components.
+
+        Returns
+        -------
+        sg_sorter_names: list
+            List of sorter names for each node in the connected component subrgaph
+        sg_units: list
+            List of unit ids for each node in the connected component subrgaph
+        '''
+        g = self.graph
+        subgraphs = (g.subgraph(c).copy() for c in nx.connected_components(g))
+        sg_sorter_names = []
+        sg_units = []
+        for i, sg in enumerate(subgraphs):
+            sorter_names = []
+            sorter_units = []
+            for node in sg.nodes:
+                sorter_names.append(node.split('_')[0])
+                sorter_units.append(int(node.split('_')[1]))
+            sg_sorter_names.append(sorter_names)
+            sg_units.append(sorter_units)
+        return sg_sorter_names, sg_units
+
+    def dump(self, save_folder):
+        save_folder = Path(save_folder)
+        if not save_folder.is_dir():
+            os.makedirs(str(save_folder))
+        filename = str(save_folder / 'multicomparison.gpickle')
+        nx.write_gpickle(self.graph, filename)
+        kwargs = {'delta_time': self.delta_time, 'sampling_frequency': self.sampling_frequency,
+                  'match_score': self.match_score, 'chance_score': self.chance_score,
+                  'n_jobs': self._n_jobs, 'verbose': self._verbose}
+        with (save_folder / 'kwargs.json').open('w') as f:
+            json.dump(kwargs, f)
+        sortings = {}
+        for (name, sort) in zip(self.name_list, self.sorting_list):
+            if sort.check_if_dumpable():
+                sortings[name] = sort.make_serialized_dict()
+            else:
+                print(f'Skipping {name} because it is not dumpable')
+        with (save_folder / 'sortings.json').open('w') as f:
+            json.dump(sortings, f)
+
+    @staticmethod
+    def load_multicomparison(folder_path):
+        folder_path = Path(folder_path)
+        with (folder_path / 'kwargs.json').open() as f:
+            kwargs = json.load(f)
+        with (folder_path / 'sortings.json').open() as f:
+            sortings = json.load(f)
+        name_list = sortings.keys()
+        sorting_list = [se.load_extractor_from_dict(v) for v in sortings.values()]
+        mcmp = MultiSortingComparison(sorting_list=sorting_list, name_list=list(name_list), do_matching=False, **kwargs)
+        mcmp.graph = nx.read_gpickle(str(folder_path / 'multicomparison.gpickle'))
+        mcmp._do_agreement()
+        return mcmp
+
+    def _do_comparison(self,):
         # do pairwise matching
         if self._verbose:
-            print('Multicomaprison step1: pairwise comparison')
+            print('Multicomaprison step 1: pairwise comparison')
 
         self.comparisons = []
         for i in range(len(self.sorting_list)):
             for j in range(i + 1, len(self.sorting_list)):
-                if verbose:
+                if self._verbose:
                     print("  Comparing: ", self.name_list[i], " and ", self.name_list[j])
                 comp = SymmetricSortingComparison(self.sorting_list[i], self.sorting_list[j],
                                                   sorting1_name=self.name_list[i],
@@ -46,8 +130,9 @@ class MultiSortingComparison(BaseComparison):
                                                   verbose=False)
                 self.comparisons.append(comp)
 
+    def _do_graph(self):
         if self._verbose:
-            print('Multicomaprison step2: make graph')
+            print('Multicomaprison step 2: make graph')
 
         self.graph = nx.Graph()
         # nodes
@@ -68,16 +153,17 @@ class MultiSortingComparison(BaseComparison):
 
         # the graph is symmetrical
         self.graph = self.graph.to_undirected()
+        self._remove_duplicate_edges()
 
+    def _do_agreement(self):
         # extract agrrement from graph
         if self._verbose:
-            print('Multicomaprison step3: extract agreement from graph')
+            print('Multicomaprison step 3: extract agreement from graph')
 
         self._new_units = {}
         self._spiketrains = []
         added_nodes = []
         unit_id = 0
-
         # Note in this graph node=one unit for one sorter
         for node in self.graph.nodes():
             edges = self.graph.edges(node, data=True)
@@ -130,10 +216,6 @@ class MultiSortingComparison(BaseComparison):
                         if n2 not in added_nodes:
                             added_nodes.append(str(n2))
                 unit_id += 1
-
-        # extract best matches true positive spike trains
-        if self._verbose:
-            print('multicomaprison step4 : make agreement spiketrains')
 
         for u, v in self._new_units.items():
             # count matched number
@@ -198,29 +280,42 @@ class MultiSortingComparison(BaseComparison):
                     agreement_matrix[u_i, sort_name] = sorting_agr.get_unit_property(unit, 'avg_agreement')
         return agreement_matrix
 
-    def plot_agreement(self, minimum_matching=0):
-        import matplotlib.pylab as plt
-        sorted_name_list = sorted(self.name_list)
-        sorting_agr = AgreementSortingExtractor(self, minimum_matching)
-        unit_ids = sorting_agr.get_unit_ids()
-        agreement_matrix = self._do_agreement_matrix(minimum_matching)
+    def _remove_duplicate_edges(self):
+        g = self.graph
+        subgraphs = (g.subgraph(c).copy() for c in nx.connected_components(g))
+        removed_nodes = 0
+        for i, sg in enumerate(subgraphs):
+            sorter_names = []
+            for node in sg.nodes:
+                sorter_names.append(node.split('_')[0])
+            sorters, counts = np.unique(sorter_names, return_counts=True)
 
-        fig, ax = plt.subplots()
-        # Using matshow here just because it sets the ticks up nicely. imshow is faster.
-        ax.matshow(agreement_matrix, cmap='Greens')
-
-        # Major ticks
-        ax.set_xticks(np.arange(0, len(sorted_name_list)))
-        ax.set_yticks(np.arange(0, len(unit_ids)))
-        ax.xaxis.tick_bottom()
-        # Labels for major ticks
-        ax.set_xticklabels(sorted_name_list, fontsize=12)
-        ax.set_yticklabels(unit_ids, fontsize=12)
-
-        ax.set_xlabel('Sorters', fontsize=15)
-        ax.set_ylabel('Units', fontsize=20)
-
-        return ax
+            if np.any(counts > 1):
+                for sorter in sorters[counts > 1]:
+                    nodes_duplicate = [n for n in sg.nodes if sorter in n]
+                    # get edges
+                    edges_duplicates = []
+                    weights_duplicates = []
+                    for n in nodes_duplicate:
+                        edges = sg.edges(n, data=True)
+                        for e in edges:
+                            edges_duplicates.append(e)
+                            weights_duplicates.append(e[2]['weight'])
+                    # remove edges
+                    edges_to_remove = len(nodes_duplicate) - 1
+                    remove_idxs = np.argsort(weights_duplicates)[:edges_to_remove]
+                    for idx in remove_idxs:
+                        if self._verbose:
+                            print('Removed edge', edges_duplicates[idx])
+                        self.graph.remove_edge(edges_duplicates[idx][0], edges_duplicates[idx][1])
+                        sg.remove_edge(edges_duplicates[idx][0], edges_duplicates[idx][1])
+                        if edges_duplicates[idx][0] in nodes_duplicate:
+                            sg.remove_node(edges_duplicates[idx][0])
+                        else:
+                            sg.remove_node(edges_duplicates[idx][1])
+                        removed_nodes += 1
+        if self._verbose:
+            print(f'Removed {removed_nodes} duplicate nodes')
 
 
 class AgreementSortingExtractor(se.SortingExtractor):
@@ -290,3 +385,4 @@ def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, match
     return MultiSortingComparison(sorting_list=sorting_list, name_list=name_list, delta_time=delta_time,
                                   match_score=match_score, chance_score=chance_score, n_jobs=n_jobs,
                                   sampling_frequency=sampling_frequency, verbose=verbose)
+
