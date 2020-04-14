@@ -185,7 +185,7 @@ def get_ground_truths(study_folder):
 
 
 def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
-                      engine='loop', engine_kargs={}, verbose=False):
+                      engine='loop', engine_kargs={}, verbose=False, raise_error=False):
     """
     Run all sorter on all recordings.
 
@@ -214,7 +214,9 @@ def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
         This contains kargs specific to the launcher engine:
             * 'loop' : no kargs
             * 'multiprocessing' : {'processes' : } number of processes
-
+    
+    raise_error: false by default
+        This raise error when a sorter run fail.
 
     """
     study_folder = Path(study_folder)
@@ -224,7 +226,7 @@ def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
 
     run_sorters(sorter_list, recording_dict, sorter_folders, sorter_params=sorter_params,
                 grouping_property=None, mode=mode, engine=engine, engine_kargs=engine_kargs,
-                with_output=False, verbose=verbose)
+                with_output=False, verbose=verbose, raise_error=raise_error)
 
     # results are copied so the heavy sorter_folders can be removed
     copy_sortings_to_npz(study_folder)
