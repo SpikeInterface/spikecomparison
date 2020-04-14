@@ -12,11 +12,13 @@ import networkx as nx
 
 class MultiSortingComparison(BaseComparison):
     def __init__(self, sorting_list, name_list=None, delta_time=0.4, sampling_frequency=None,
-                 match_score=0.5, chance_score=0.1, n_jobs=-1, verbose=False, do_matching=True):
+                 match_score=0.5, chance_score=0.1, n_jobs=-1, spiketrain_mode='union', verbose=False,
+                 do_matching=True):
         BaseComparison.__init__(self, sorting_list, name_list=name_list,
                                 delta_time=delta_time, sampling_frequency=sampling_frequency,
                                 match_score=match_score, chance_score=chance_score,
                                 n_jobs=n_jobs, verbose=verbose)
+        self._spiketrain_mode = spiketrain_mode
         if do_matching:
             self._do_comparison()
             self._do_graph()
@@ -33,21 +35,26 @@ class MultiSortingComparison(BaseComparison):
         '''
         return self.sorting_list
 
-    def get_agreement_sorting(self, minimum_matching=0):
+    def get_agreement_sorting(self, minimum_agreement=1, minimum_agreement_only=False):
         '''
         Returns AgreementSortingExtractor with units with a 'minimum_matching' agreement.
 
         Parameters
         ----------
-        minimum_matching: int
-            Minimum number of matches among sorters to include a unit
+        minimum_agreement: int
+            Minimum number of matches among sorters to include a unit.
+        minimum_agreement_only: bool
+            If True, only units with agreement == 'minimum_matching' are included.
+            If False, units with an agreement >= 'minimum_matching' are included
 
         Returns
         -------
         agreement_sorting: AgreementSortingExtractor
             The output AgreementSortingExtractor
         '''
-        sorting = AgreementSortingExtractor(self, min_agreement=minimum_matching)
+        assert minimum_agreement > 0, "'minimum_agreement' should be greater than 0"
+        sorting = AgreementSortingExtractor(self, min_agreement=minimum_agreement,
+                                            min_agreement_only=minimum_agreement_only)
         sorting.set_sampling_frequency(self.sampling_frequency)
         return sorting
 
@@ -162,105 +169,146 @@ class MultiSortingComparison(BaseComparison):
 
         self._new_units = {}
         self._spiketrains = []
-        added_nodes = []
         unit_id = 0
-        # Note in this graph node=one unit for one sorter
-        for node in self.graph.nodes():
-            edges = self.graph.edges(node, data=True)
-            sorter, unit = (str(node)).split('_')
-            unit = int(unit)
-            if len(edges) == 0:
+
+        subgraphs = (self.graph.subgraph(c).copy() for c in nx.connected_components(self.graph))
+        for i, sg in enumerate(subgraphs):
+            edges = list(sg.edges(data=True))
+            if len(edges) > 0:
+                avg_agr = np.mean([d['weight'] for u, v, d in edges])
+            else:
                 avg_agr = 0
-                sorting_idxs = {sorter: unit}
-                self._new_units[unit_id] = {'avg_agreement': avg_agr,
-                                            'sorter_unit_ids': sorting_idxs}
-                unit_id += 1
-                added_nodes.append(str(node))
-            else:
-                # check if other nodes have edges (we should also check edges of
-                all_edges = list(edges)
-                for e in edges:
-                    # Note for alessio n1>node1 n2>node2 e>edge
-                    n1, n2, d = e
-                    n2_edges = self.graph.edges(n2, data=True)
-                    if len(n2_edges) > 0:  # useless line if
-                        for e_n in n2_edges:
-                            n_n1, n_n2, d = e_n
-                            # Note for alessio  why do do you sorter each elements in the all_edges ?
-                            if sorted([n_n1, n_n2]) not in [sorted([u, v]) for u, v, _ in all_edges]:
-                                all_edges.append(e_n)
-                avg_agr = np.mean([d['weight'] for u, v, d in all_edges])
-                max_edge = list(all_edges)[np.argmax([d['weight'] for u, v, d in all_edges])]
-
-                for edge in all_edges:
-                    n1, n2, d = edge
-                    if n1 not in added_nodes or n2 not in added_nodes:
-                        sorter1, unit1 = n1.split('_')
-                        sorter2, unit2 = n2.split('_')
-                        unit1 = int(unit1)
-                        unit2 = int(unit2)
-                        sorting_idxs = {sorter1: unit1, sorter2: unit2}
-                        if unit_id not in self._new_units.keys():
-                            self._new_units[unit_id] = {'avg_agreement': avg_agr,
-                                                        'sorter_unit_ids': sorting_idxs}
-                        else:
-                            full_sorting_idxs = self._new_units[unit_id]['sorter_unit_ids']
-                            for s, u in sorting_idxs.items():
-                                if s not in full_sorting_idxs:
-                                    full_sorting_idxs[s] = u
-                            self._new_units[unit_id] = {'avg_agreement': avg_agr,
-                                                        'sorter_unit_ids': full_sorting_idxs}
-                        added_nodes.append(str(node))
-                        if n1 not in added_nodes:
-                            added_nodes.append(str(n1))
-                        if n2 not in added_nodes:
-                            added_nodes.append(str(n2))
-                unit_id += 1
-
-        for u, v in self._new_units.items():
-            # count matched number
-            matched_num = len(v['sorter_unit_ids'].keys())
-            v['matched_number'] = matched_num
-            self._new_units[u] = v
-
-            if len(v['sorter_unit_ids'].keys()) == 1:
+            sorter_unit_ids = {}
+            for node in sg.nodes:
+                sorter_name = node.split('_')[0]
+                sorter_unit = int(node.split('_')[1])
+                sorter_unit_ids[sorter_name] = sorter_unit
+            self._new_units[unit_id] = {'avg_agreement': avg_agr, 'sorter_unit_ids': sorter_unit_ids,
+                                        'agreement_number': len(sg.nodes)}
+            # Append correct spike train
+            if len(sorter_unit_ids.keys()) == 1:
                 self._spiketrains.append(self.sorting_list[self.name_list.index(
-                    list(v['sorter_unit_ids'].keys())[0])].get_unit_spike_train(list(v['sorter_unit_ids'].values())[0]))
+                    list(sorter_unit_ids.keys())[0])].get_unit_spike_train(list(sorter_unit_ids.values())[0]))
             else:
-                nodes = []
-                edges = []
-                for sorter, unit in v['sorter_unit_ids'].items():
-                    nodes.append((sorter + '_' + str(unit)))
-                for n1 in nodes:
-                    for n2 in nodes:
-                        if n1 != n2:
-                            if (n1, n2) not in edges and (n2, n1) not in edges:
-                                if (n1, n2) in self.graph.edges:
-                                    edges.append((n1, n2))
-                                elif (n2, n1) in self.graph.edges:
-                                    edges.append((n2, n1))
-                max_weight = 0
-                for e in edges:
-                    w = self.graph.edges.get(e)['weight']
-                    if w > max_weight:
-                        max_weight = w
-                        max_edge = (e[0], e[1], w)
-                n1, n2, d = max_edge
-                sorter1, unit1 = n1.split('_')
-                sorter2, unit2 = n2.split('_')
+                max_edge = edges[int(np.argmax([d['weight'] for u, v, d in edges]))]
+                node1, node2, weight = max_edge
+                sorter1, unit1 = node1.split('_')
+                sorter2, unit2 = node2.split('_')
                 unit1 = int(unit1)
                 unit2 = int(unit2)
                 sp1 = self.sorting_list[self.name_list.index(sorter1)].get_unit_spike_train(unit1)
                 sp2 = self.sorting_list[self.name_list.index(sorter2)].get_unit_spike_train(unit2)
-                lab1, lab2 = compare_spike_trains(sp1, sp2)
-                tp_idx1 = np.where(np.array(lab1) == 'TP')[0]
-                tp_idx2 = np.where(np.array(lab2) == 'TP')[0]
-                assert len(tp_idx1) == len(tp_idx2)
-                sp_tp1 = list(np.array(sp1)[tp_idx1])
-                sp_tp2 = list(np.array(sp2)[tp_idx2])
-                assert np.allclose(sp_tp1, sp_tp2, atol=self.delta_frames)
-                self._spiketrains.append(sp_tp1)
-        self.added_nodes = added_nodes
+
+                if self._spiketrain_mode == 'union':
+                    lab1, lab2 = compare_spike_trains(sp1, sp2)
+                    # add FP to spike train 1 (FP are the only spikes outside the union)
+                    fp_idx2 = np.where(np.array(lab2) == 'FP')[0]
+                    sp_union = np.sort(np.concatenate((sp1, sp2[fp_idx2])))
+                    self._spiketrains.append(list(sp_union))
+                elif self._spiketrain_mode == 'intersection':
+                    lab1, lab2 = compare_spike_trains(sp1, sp2)
+                    # TP are the spikes in the intersection
+                    tp_idx1 = np.where(np.array(lab1) == 'TP')[0]
+                    sp_tp1 = list(np.array(sp1)[tp_idx1])
+                    self._spiketrains.append(sp_tp1)
+            unit_id += 1
+
+
+        # for node in self.graph.nodes():
+        #     edges = self.graph.edges(node, data=True)
+        #     sorter, unit = (str(node)).split('_')
+        #     unit = int(unit)
+        #
+        #     if len(edges) == 0:
+        #         avg_agr = 0
+        #         sorting_idxs = {sorter: unit}
+        #         self._new_units[unit_id] = {'avg_agreement': avg_agr,
+        #                                     'sorter_unit_ids': sorting_idxs}
+        #         unit_id += 1
+        #         added_nodes.append(str(node))
+        #     else:
+        #         # Add edges from the second node
+        #         all_edges = list(edges)
+        #         for edge in edges:
+        #             node1, node2, _ = edge
+        #             edges_node2 = self.graph.edges(node2, data=True)
+        #             if len(edges_node2) > 0:  # useless line if
+        #                 for edge_n2 in edges_node2:
+        #                     n_node1, n_node2, _ = edge_n2
+        #                     # Sort node names to make sure the name is not reversed
+        #                     if sorted([n_node1, n_node2]) not in [sorted([u, v]) for u, v, _ in all_edges]:
+        #                         all_edges.append(edge_n2)
+        #         avg_agr = np.mean([d['weight'] for u, v, d in all_edges])
+        #
+        #         for edge in all_edges:
+        #             node1, node2, data = edge
+        #             if node1 not in added_nodes or node2 not in added_nodes:
+        #                 sorter1, unit1 = node1.split('_')
+        #                 sorter2, unit2 = node2.split('_')
+        #                 unit1 = int(unit1)
+        #                 unit2 = int(unit2)
+        #                 sorting_idxs = {sorter1: unit1, sorter2: unit2}
+        #                 if unit_id not in self._new_units.keys():
+        #                     self._new_units[unit_id] = {'avg_agreement': avg_agr,
+        #                                                 'sorter_unit_ids': sorting_idxs}
+        #                 else:
+        #                     full_sorting_idxs = self._new_units[unit_id]['sorter_unit_ids']
+        #                     for s, u in sorting_idxs.items():
+        #                         if s not in full_sorting_idxs:
+        #                             full_sorting_idxs[s] = u
+        #                     self._new_units[unit_id] = {'avg_agreement': avg_agr,
+        #                                                 'sorter_unit_ids': full_sorting_idxs}
+        #                 if node not in added_nodes:
+        #                     added_nodes.append(str(node))
+        #                 if node1 not in added_nodes:
+        #                     added_nodes.append(str(node1))
+        #                 if node2 not in added_nodes:
+        #                     added_nodes.append(str(node2))
+        #         unit_id += 1
+        #
+        # for u, v in self._new_units.items():
+        #     # count matched number
+        #     matched_num = len(v['sorter_unit_ids'].keys())
+        #     v['agreement_number'] = matched_num
+        #     self._new_units[u] = v
+        #
+        #     if len(v['sorter_unit_ids'].keys()) == 1:
+        #         self._spiketrains.append(self.sorting_list[self.name_list.index(
+        #             list(v['sorter_unit_ids'].keys())[0])].get_unit_spike_train(list(v['sorter_unit_ids'].values())[0]))
+        #     else:
+        #         nodes = []
+        #         edges = []
+        #         for sorter, unit in v['sorter_unit_ids'].items():
+        #             nodes.append((sorter + '_' + str(unit)))
+        #         for node1 in nodes:
+        #             for node2 in nodes:
+        #                 if node1 != node2:
+        #                     if (node1, node2) not in edges and (node2, node1) not in edges:
+        #                         if (node1, node2) in self.graph.edges:
+        #                             edges.append((node1, node2))
+        #                         elif (node2, node1) in self.graph.edges:
+        #                             edges.append((node2, node1))
+        #         max_weight = 0
+        #         for e in edges:
+        #             w = self.graph.edges.get(e)['weight']
+        #             if w > max_weight:
+        #                 max_weight = w
+        #                 max_edge = (e[0], e[1], w)
+        #         node1, node2, d = max_edge
+        #         sorter1, unit1 = node1.split('_')
+        #         sorter2, unit2 = node2.split('_')
+        #         unit1 = int(unit1)
+        #         unit2 = int(unit2)
+        #         sp1 = self.sorting_list[self.name_list.index(sorter1)].get_unit_spike_train(unit1)
+        #         sp2 = self.sorting_list[self.name_list.index(sorter2)].get_unit_spike_train(unit2)
+        #         lab1, lab2 = compare_spike_trains(sp1, sp2)
+        #         tp_idx1 = np.where(np.array(lab1) == 'TP')[0]
+        #         tp_idx2 = np.where(np.array(lab2) == 'TP')[0]
+        #         assert len(tp_idx1) == len(tp_idx2)
+        #         sp_tp1 = list(np.array(sp1)[tp_idx1])
+        #         sp_tp2 = list(np.array(sp2)[tp_idx2])
+        #         assert np.allclose(sp_tp1, sp_tp2, atol=self.delta_frames)
+        #         self._spiketrains.append(sp_tp1)
 
     def _do_agreement_matrix(self, minimum_matching=0):
         sorted_name_list = sorted(self.name_list)
@@ -319,18 +367,20 @@ class MultiSortingComparison(BaseComparison):
 
 
 class AgreementSortingExtractor(se.SortingExtractor):
-    def __init__(self, multisortingcomparison, min_agreement=0):
+    def __init__(self, multisortingcomparison, min_agreement=1, min_agreement_only=False):
         se.SortingExtractor.__init__(self)
         self._msc = multisortingcomparison
-        if min_agreement == 0 or min_agreement == 1:
-            self._unit_ids = list(self._msc._new_units.keys())
+
+        if min_agreement_only:
+            self._unit_ids = list(u for u in self._msc._new_units.keys()
+                                  if self._msc._new_units[u]['agreement_number'] == min_agreement)
         else:
             self._unit_ids = list(u for u in self._msc._new_units.keys()
-                                  if self._msc._new_units[u]['matched_number'] >= min_agreement)
+                                  if self._msc._new_units[u]['agreement_number'] >= min_agreement)
 
         for unit in self._unit_ids:
-            self.set_unit_property(unit_id=unit, property_name='matched_number',
-                                   value=self._msc._new_units[unit]['matched_number'])
+            self.set_unit_property(unit_id=unit, property_name='agreement_number',
+                                   value=self._msc._new_units[unit]['agreement_number'])
             self.set_unit_property(unit_id=unit, property_name='avg_agreement',
                                    value=self._msc._new_units[unit]['avg_agreement'])
             self.set_unit_property(unit_id=unit, property_name='sorter_unit_ids',
@@ -349,7 +399,7 @@ class AgreementSortingExtractor(se.SortingExtractor):
 
 
 def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, match_score=0.5, chance_score=0.1,
-                             n_jobs=-1, sampling_frequency=None, verbose=False):
+                             n_jobs=-1, spiketrain_mode='union', sampling_frequency=None, verbose=False):
     '''
     Compares multiple spike sorter outputs.
 
@@ -372,6 +422,11 @@ def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, match
         Minimum agreement score to for a possible match (default 0.1)
     n_jobs: int
        Number of cores to use in parallel. Uses all availible if -1
+    spiketrain_mode: str
+        Mode to extract agreement spike trains:
+            - 'union': spike trains are the union between the spike trains of the best matching two sorters
+            - 'intersection': spike trains are the intersection between the spike trains of the
+               best matching two sorters
     sampling_frequency: float
         Sampling frequency (used if information is not in the sorting extractors)
     verbose: bool
@@ -384,5 +439,6 @@ def compare_multiple_sorters(sorting_list, name_list=None, delta_time=0.4, match
     '''
     return MultiSortingComparison(sorting_list=sorting_list, name_list=name_list, delta_time=delta_time,
                                   match_score=match_score, chance_score=chance_score, n_jobs=n_jobs,
-                                  sampling_frequency=sampling_frequency, verbose=verbose)
+                                  spiketrain_mode=spiketrain_mode, sampling_frequency=sampling_frequency,
+                                  verbose=verbose)
 
