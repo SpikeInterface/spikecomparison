@@ -18,7 +18,6 @@ def setup_module():
         shutil.rmtree(study_folder)
 
     _setup_comparison_study()
-
     _run_study_sorters()
 
 
@@ -41,7 +40,6 @@ def _run_study_sorters():
 
 def test_loops():
     names = list(iter_computed_names(study_folder))
-    # ~ print(names)
     for rec_name, sorter_name, sorting in iter_computed_sorting(study_folder):
         print(rec_name, sorter_name)
         print(sorting)
@@ -49,5 +47,4 @@ def test_loops():
 
 if __name__ == '__main__':
     setup_module()
-
     test_loops()

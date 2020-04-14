@@ -57,6 +57,8 @@ def test_extract_sortings():
     count_units = study.aggregate_count_units()
     dataframes = study.aggregate_dataframes()
 
+    shutil.rmtree(study_folder)
+
 
 if __name__ == '__main__':
     #~ setup_module()
