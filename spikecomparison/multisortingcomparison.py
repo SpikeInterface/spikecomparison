@@ -167,7 +167,6 @@ class MultiSortingComparison(BaseComparison):
         unit_id = 0
 
         # Remove duplicate
-        self._remove_duplicate_edges()
         subgraphs = (self.clean_graph.subgraph(c).copy() for c in nx.connected_components(self.clean_graph))
         for i, sg in enumerate(subgraphs):
             edges = list(sg.edges(data=True))
