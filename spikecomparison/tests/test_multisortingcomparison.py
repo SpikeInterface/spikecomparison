@@ -38,14 +38,16 @@ def test_compare_multiple_sorters():
     print(agr)
     print(agr_shuffle)
 
-    assert len(msc.get_agreement_sorting(minimum_matching=3).get_unit_ids()) == 3
-    assert len(msc.get_agreement_sorting(minimum_matching=2).get_unit_ids()) == 5
+    assert len(msc.get_agreement_sorting(minimum_agreement=3).get_unit_ids()) == 3
+    assert len(msc.get_agreement_sorting(minimum_agreement=2).get_unit_ids()) == 5
     assert len(msc.get_agreement_sorting().get_unit_ids()) == 6
-    assert len(msc.get_agreement_sorting(minimum_matching=3).get_unit_ids()) == \
-           len(msc_shuffle.get_agreement_sorting(minimum_matching=3).get_unit_ids())
-    assert len(msc.get_agreement_sorting(minimum_matching=2).get_unit_ids()) == \
-           len(msc_shuffle.get_agreement_sorting(minimum_matching=2).get_unit_ids())
+    assert len(msc.get_agreement_sorting(minimum_agreement=3).get_unit_ids()) == \
+           len(msc_shuffle.get_agreement_sorting(minimum_agreement=3).get_unit_ids())
+    assert len(msc.get_agreement_sorting(minimum_agreement=2).get_unit_ids()) == \
+           len(msc_shuffle.get_agreement_sorting(minimum_agreement=2).get_unit_ids())
     assert len(msc.get_agreement_sorting().get_unit_ids()) == len(msc_shuffle.get_agreement_sorting().get_unit_ids())
+    agreement_2 = msc.get_agreement_sorting(minimum_agreement=2, minimum_agreement_only=True)
+    assert np.all([agreement_2.get_unit_property(u, 'agreement_number')] == 2 for u in agreement_2.get_unit_ids())
 
 
 if __name__ == '__main__':
