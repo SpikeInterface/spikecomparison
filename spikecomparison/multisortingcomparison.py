@@ -19,21 +19,12 @@ class MultiSortingComparison(BaseComparison):
                                 match_score=match_score, chance_score=chance_score,
                                 n_jobs=n_jobs, verbose=verbose)
         self._spiketrain_mode = spiketrain_mode
+        self.clean_graph = None
         if do_matching:
             self._do_comparison()
             self._do_graph()
+            self._remove_duplicate_edges()
             self._do_agreement()
-
-    def get_sorting_list(self):
-        '''
-        Returns sorting list
-
-        Returns
-        -------
-        sorting_list: list
-            List of SortingExtractor objects
-        '''
-        return self.sorting_list
 
     def get_agreement_sorting(self, minimum_agreement=1, minimum_agreement_only=False):
         '''
@@ -69,7 +60,10 @@ class MultiSortingComparison(BaseComparison):
         sg_units: list
             List of unit ids for each node in the connected component subrgaph
         '''
-        g = self.graph
+        if self.clean_graph is not None:
+            g = self.clean_graph
+        else:
+            g = self.graph
         subgraphs = (g.subgraph(c).copy() for c in nx.connected_components(g))
         sg_sorter_names = []
         sg_units = []
@@ -114,6 +108,8 @@ class MultiSortingComparison(BaseComparison):
         sorting_list = [se.load_extractor_from_dict(v) for v in sortings.values()]
         mcmp = MultiSortingComparison(sorting_list=sorting_list, name_list=list(name_list), do_matching=False, **kwargs)
         mcmp.graph = nx.read_gpickle(str(folder_path / 'multicomparison.gpickle'))
+        # do step 3 and 4
+        mcmp._remove_duplicate_edges()
         mcmp._do_agreement()
         return mcmp
 
@@ -160,18 +156,19 @@ class MultiSortingComparison(BaseComparison):
 
         # the graph is symmetrical
         self.graph = self.graph.to_undirected()
-        self._remove_duplicate_edges()
 
     def _do_agreement(self):
-        # extract agrrement from graph
+        # extract agreement from graph
         if self._verbose:
-            print('Multicomaprison step 3: extract agreement from graph')
+            print('Multicomaprison step 4: extract agreement from graph')
 
         self._new_units = {}
         self._spiketrains = []
         unit_id = 0
 
-        subgraphs = (self.graph.subgraph(c).copy() for c in nx.connected_components(self.graph))
+        # Remove duplicate
+        self._remove_duplicate_edges()
+        subgraphs = (self.clean_graph.subgraph(c).copy() for c in nx.connected_components(self.clean_graph))
         for i, sg in enumerate(subgraphs):
             edges = list(sg.edges(data=True))
             if len(edges) > 0:
@@ -213,106 +210,9 @@ class MultiSortingComparison(BaseComparison):
                     self._spiketrains.append(sp_tp1)
             unit_id += 1
 
-
-        # for node in self.graph.nodes():
-        #     edges = self.graph.edges(node, data=True)
-        #     sorter, unit = (str(node)).split('_')
-        #     unit = int(unit)
-        #
-        #     if len(edges) == 0:
-        #         avg_agr = 0
-        #         sorting_idxs = {sorter: unit}
-        #         self._new_units[unit_id] = {'avg_agreement': avg_agr,
-        #                                     'sorter_unit_ids': sorting_idxs}
-        #         unit_id += 1
-        #         added_nodes.append(str(node))
-        #     else:
-        #         # Add edges from the second node
-        #         all_edges = list(edges)
-        #         for edge in edges:
-        #             node1, node2, _ = edge
-        #             edges_node2 = self.graph.edges(node2, data=True)
-        #             if len(edges_node2) > 0:  # useless line if
-        #                 for edge_n2 in edges_node2:
-        #                     n_node1, n_node2, _ = edge_n2
-        #                     # Sort node names to make sure the name is not reversed
-        #                     if sorted([n_node1, n_node2]) not in [sorted([u, v]) for u, v, _ in all_edges]:
-        #                         all_edges.append(edge_n2)
-        #         avg_agr = np.mean([d['weight'] for u, v, d in all_edges])
-        #
-        #         for edge in all_edges:
-        #             node1, node2, data = edge
-        #             if node1 not in added_nodes or node2 not in added_nodes:
-        #                 sorter1, unit1 = node1.split('_')
-        #                 sorter2, unit2 = node2.split('_')
-        #                 unit1 = int(unit1)
-        #                 unit2 = int(unit2)
-        #                 sorting_idxs = {sorter1: unit1, sorter2: unit2}
-        #                 if unit_id not in self._new_units.keys():
-        #                     self._new_units[unit_id] = {'avg_agreement': avg_agr,
-        #                                                 'sorter_unit_ids': sorting_idxs}
-        #                 else:
-        #                     full_sorting_idxs = self._new_units[unit_id]['sorter_unit_ids']
-        #                     for s, u in sorting_idxs.items():
-        #                         if s not in full_sorting_idxs:
-        #                             full_sorting_idxs[s] = u
-        #                     self._new_units[unit_id] = {'avg_agreement': avg_agr,
-        #                                                 'sorter_unit_ids': full_sorting_idxs}
-        #                 if node not in added_nodes:
-        #                     added_nodes.append(str(node))
-        #                 if node1 not in added_nodes:
-        #                     added_nodes.append(str(node1))
-        #                 if node2 not in added_nodes:
-        #                     added_nodes.append(str(node2))
-        #         unit_id += 1
-        #
-        # for u, v in self._new_units.items():
-        #     # count matched number
-        #     matched_num = len(v['sorter_unit_ids'].keys())
-        #     v['agreement_number'] = matched_num
-        #     self._new_units[u] = v
-        #
-        #     if len(v['sorter_unit_ids'].keys()) == 1:
-        #         self._spiketrains.append(self.sorting_list[self.name_list.index(
-        #             list(v['sorter_unit_ids'].keys())[0])].get_unit_spike_train(list(v['sorter_unit_ids'].values())[0]))
-        #     else:
-        #         nodes = []
-        #         edges = []
-        #         for sorter, unit in v['sorter_unit_ids'].items():
-        #             nodes.append((sorter + '_' + str(unit)))
-        #         for node1 in nodes:
-        #             for node2 in nodes:
-        #                 if node1 != node2:
-        #                     if (node1, node2) not in edges and (node2, node1) not in edges:
-        #                         if (node1, node2) in self.graph.edges:
-        #                             edges.append((node1, node2))
-        #                         elif (node2, node1) in self.graph.edges:
-        #                             edges.append((node2, node1))
-        #         max_weight = 0
-        #         for e in edges:
-        #             w = self.graph.edges.get(e)['weight']
-        #             if w > max_weight:
-        #                 max_weight = w
-        #                 max_edge = (e[0], e[1], w)
-        #         node1, node2, d = max_edge
-        #         sorter1, unit1 = node1.split('_')
-        #         sorter2, unit2 = node2.split('_')
-        #         unit1 = int(unit1)
-        #         unit2 = int(unit2)
-        #         sp1 = self.sorting_list[self.name_list.index(sorter1)].get_unit_spike_train(unit1)
-        #         sp2 = self.sorting_list[self.name_list.index(sorter2)].get_unit_spike_train(unit2)
-        #         lab1, lab2 = compare_spike_trains(sp1, sp2)
-        #         tp_idx1 = np.where(np.array(lab1) == 'TP')[0]
-        #         tp_idx2 = np.where(np.array(lab2) == 'TP')[0]
-        #         assert len(tp_idx1) == len(tp_idx2)
-        #         sp_tp1 = list(np.array(sp1)[tp_idx1])
-        #         sp_tp2 = list(np.array(sp2)[tp_idx2])
-        #         assert np.allclose(sp_tp1, sp_tp2, atol=self.delta_frames)
-        #         self._spiketrains.append(sp_tp1)
-
-    def _do_agreement_matrix(self, minimum_matching=0):
+    def _do_agreement_matrix(self, minimum_agreement=1):
         sorted_name_list = sorted(self.name_list)
-        sorting_agr = AgreementSortingExtractor(self, minimum_matching)
+        sorting_agr = AgreementSortingExtractor(self, minimum_agreement)
         unit_ids = sorting_agr.get_unit_ids()
         agreement_matrix = np.zeros((len(unit_ids), len(sorted_name_list)))
 
@@ -329,8 +229,10 @@ class MultiSortingComparison(BaseComparison):
         return agreement_matrix
 
     def _remove_duplicate_edges(self):
-        g = self.graph
-        subgraphs = (g.subgraph(c).copy() for c in nx.connected_components(g))
+        if self._verbose:
+            print('Multicomaprison step 3: clean graph')
+        clean_graph = self.graph.copy()
+        subgraphs = (clean_graph.subgraph(c).copy() for c in nx.connected_components(clean_graph))
         removed_nodes = 0
         for i, sg in enumerate(subgraphs):
             sorter_names = []
@@ -355,7 +257,7 @@ class MultiSortingComparison(BaseComparison):
                     for idx in remove_idxs:
                         if self._verbose:
                             print('Removed edge', edges_duplicates[idx])
-                        self.graph.remove_edge(edges_duplicates[idx][0], edges_duplicates[idx][1])
+                        clean_graph.remove_edge(edges_duplicates[idx][0], edges_duplicates[idx][1])
                         sg.remove_edge(edges_duplicates[idx][0], edges_duplicates[idx][1])
                         if edges_duplicates[idx][0] in nodes_duplicate:
                             sg.remove_node(edges_duplicates[idx][0])
@@ -364,6 +266,7 @@ class MultiSortingComparison(BaseComparison):
                         removed_nodes += 1
         if self._verbose:
             print(f'Removed {removed_nodes} duplicate nodes')
+        self.clean_graph = clean_graph
 
 
 class AgreementSortingExtractor(se.SortingExtractor):
