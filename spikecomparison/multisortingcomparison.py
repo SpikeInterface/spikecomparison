@@ -26,15 +26,15 @@ class MultiSortingComparison(BaseComparison):
             self._remove_duplicate_edges()
             self._do_agreement()
 
-    def get_agreement_sorting(self, minimum_agreement=1, minimum_agreement_only=False):
+    def get_agreement_sorting(self, minimum_agreement_count=1, minimum_agreement_count_only=False):
         '''
         Returns AgreementSortingExtractor with units with a 'minimum_matching' agreement.
 
         Parameters
         ----------
-        minimum_agreement: int
+        minimum_agreement_count: int
             Minimum number of matches among sorters to include a unit.
-        minimum_agreement_only: bool
+        minimum_agreement_count_only: bool
             If True, only units with agreement == 'minimum_matching' are included.
             If False, units with an agreement >= 'minimum_matching' are included
 
@@ -43,9 +43,9 @@ class MultiSortingComparison(BaseComparison):
         agreement_sorting: AgreementSortingExtractor
             The output AgreementSortingExtractor
         '''
-        assert minimum_agreement > 0, "'minimum_agreement' should be greater than 0"
-        sorting = AgreementSortingExtractor(self, min_agreement=minimum_agreement,
-                                            min_agreement_only=minimum_agreement_only)
+        assert minimum_agreement_count > 0, "'minimum_agreement_count' should be greater than 0"
+        sorting = AgreementSortingExtractor(self, min_agreement_count=minimum_agreement_count,
+                                            min_agreement_count_only=minimum_agreement_count_only)
         sorting.set_sampling_frequency(self.sampling_frequency)
         return sorting
 
@@ -269,16 +269,16 @@ class MultiSortingComparison(BaseComparison):
 
 
 class AgreementSortingExtractor(se.SortingExtractor):
-    def __init__(self, multisortingcomparison, min_agreement=1, min_agreement_only=False):
+    def __init__(self, multisortingcomparison, min_agreement_count=1, min_agreement_count_only=False):
         se.SortingExtractor.__init__(self)
         self._msc = multisortingcomparison
 
-        if min_agreement_only:
+        if min_agreement_count_only:
             self._unit_ids = list(u for u in self._msc._new_units.keys()
-                                  if self._msc._new_units[u]['agreement_number'] == min_agreement)
+                                  if self._msc._new_units[u]['agreement_number'] == min_agreement_count)
         else:
             self._unit_ids = list(u for u in self._msc._new_units.keys()
-                                  if self._msc._new_units[u]['agreement_number'] >= min_agreement)
+                                  if self._msc._new_units[u]['agreement_number'] >= min_agreement_count)
 
         for unit in self._unit_ids:
             self.set_unit_property(unit_id=unit, property_name='agreement_number',
