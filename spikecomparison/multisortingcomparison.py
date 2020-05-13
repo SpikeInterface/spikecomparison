@@ -14,8 +14,6 @@ class MultiSortingComparison(BaseComparison):
     def __init__(self, sorting_list, name_list=None, delta_time=0.4, sampling_frequency=None,
                  match_score=0.5, chance_score=0.1, n_jobs=-1, spiketrain_mode='union', verbose=False,
                  do_matching=True):
-        if np.any(['_' in name for name in name_list]):
-            raise ValueError("Sorter names in 'name_list' cannot contain '_'")
         BaseComparison.__init__(self, sorting_list, name_list=name_list,
                                 delta_time=delta_time, sampling_frequency=sampling_frequency,
                                 match_score=match_score, chance_score=chance_score,

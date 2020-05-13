@@ -23,6 +23,8 @@ class BaseComparison:
         if name_list is None:
             name_list = ['sorting{}'.format(i + 1) for i in range(len(sorting_list))]
         self.name_list = name_list
+        if np.any(['_' in name for name in name_list]):
+            raise ValueError("Sorter names in 'name_list' cannot contain '_'")
 
         if sampling_frequency is None:
             # take sampling frequency from sorting list and test that they are equivalent.
