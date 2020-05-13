@@ -118,7 +118,7 @@ def compare_two_sorters(sorting1, sorting2, sorting1_name=None, sorting2_name=No
 
     - Spike trains are matched based on their agreement scores
     - Individual spikes are labelled as true positives (TP), false negatives (FN), false positives 1 (FP from spike
-    train 1), false positives 2 (FP from spike train 2), misclassifications (CL)
+      train 1), false positives 2 (FP from spike train 2), misclassifications (CL)
 
     It also allows to get confusion matrix and agreement fraction, false positive fraction and
     false negative fraction.

@@ -119,7 +119,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
         Computes the confusion matrix.
 
         Returns
-        ------
+        -------
         confusion_matrix: pandas.DataFrame
             The confusion matrix
         """
@@ -430,7 +430,7 @@ def compare_sorter_to_ground_truth(gt_sorting, tested_sorting, gt_name=None, tes
 
     - Spike trains are matched based on their agreement scores
     - Individual spikes are labelled as true positives (TP), false negatives (FN),
-    false positives 1 (FP), misclassifications (CL)
+      false positives 1 (FP), misclassifications (CL)
 
     It also allows to compute_performance and confusion matrix.
 
