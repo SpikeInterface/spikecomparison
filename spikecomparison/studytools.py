@@ -185,7 +185,7 @@ def get_ground_truths(study_folder):
 
 
 def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
-                      engine='loop', engine_kargs={}, verbose=False, raise_error=False):
+                      engine='loop', engine_kwargs={}, verbose=False, run_sorter_kwargs={}):
     """
     Run all sorter on all recordings.
 
@@ -208,15 +208,23 @@ def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
             * 'keep' : do not compute again if f=subfolder exists and log is OK
 
     engine: str
-        'loop' or 'multiprocessing'
+        'loop', 'multiprocessing', or 'dask'
 
-    engine_kargs: dict
-        This contains kargs specific to the launcher engine:
+    engine_kwargs: dict
+        This contains kwargs specific to the launcher engine:
             * 'loop' : no kargs
             * 'multiprocessing' : {'processes' : } number of processes
-    
-    raise_error: false by default
-        This raise error when a sorter run fail.
+            * 'dask' : {'client':} the dask client for submiting task
+
+    verbose: bool
+        default True
+
+    run_sorter_kwargs: dict
+        This contains kwargs specific to run_sorter function:\
+            * 'raise_error' :  bool
+            * 'parallel' : bool
+            * 'n_jobs' : int
+            * 'joblib_backend' : 'loky' / 'multiprocessing' / 'threading'
 
     """
     study_folder = Path(study_folder)
@@ -225,8 +233,8 @@ def run_study_sorters(study_folder, sorter_list, sorter_params={}, mode='keep',
     recording_dict = get_recordings(study_folder)
 
     run_sorters(sorter_list, recording_dict, sorter_folders, sorter_params=sorter_params,
-                grouping_property=None, mode=mode, engine=engine, engine_kargs=engine_kargs,
-                with_output=False, verbose=verbose, raise_error=raise_error)
+                grouping_property=None, mode=mode, engine=engine, engine_kwargs=engine_kwargs,
+                with_output=False, verbose=verbose, run_sorter_kwargs=run_sorter_kwargs)
 
     # results are copied so the heavy sorter_folders can be removed
     copy_sortings_to_npz(study_folder)

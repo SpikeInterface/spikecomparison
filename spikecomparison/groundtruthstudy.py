@@ -50,11 +50,11 @@ class GroundTruthStudy:
         setup_comparison_study(study_folder, gt_dict)
         return cls(study_folder)
 
-    def run_sorters(self, sorter_list, sorter_params={}, mode='keep',
-                    engine='loop', engine_kargs={}, verbose=False, raise_error=False):
+    def run_sorters(self, sorter_list, sorter_params={}, mode='keep', engine='loop', engine_kwargs={}, verbose=False,
+                    run_sorter_kwargs={'parallel': False}):
         run_study_sorters(self.study_folder, sorter_list, sorter_params=sorter_params,
-                        mode=mode, engine=engine, engine_kargs=engine_kargs, verbose=verbose,
-                        raise_error=raise_error)
+                          mode=mode, engine=engine, engine_kwargs=engine_kwargs, verbose=verbose,
+                          run_sorter_kwargs=run_sorter_kwargs)
 
     def _check_rec_name(self, rec_name):
         if not self._is_scanned:
