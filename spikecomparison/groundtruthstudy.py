@@ -171,13 +171,11 @@ class GroundTruthStudy:
         return dataframes
 
     def _compute_snr(self, rec_name, **snr_kargs):
-        #  print('compute SNR', rec_name)
+        # print('compute SNR', rec_name)
         rec = self.get_recording(rec_name)
         gt_sorting = self.get_ground_truth(rec_name)
 
         snr_list = st.validation.compute_snrs(gt_sorting, rec, unit_ids=None, save_as_property=False, **snr_kargs)
-        
-        snr_list = snr_list[0] # only one epoch
 
         snr = pd.DataFrame(index=gt_sorting.get_unit_ids(), columns=['snr'])
         snr.index.name = 'gt_unit_id'
