@@ -44,12 +44,33 @@ class CollisionGTComparison(GroundTruthComparison):
         mask = (self.collision_events['unit_id1'] == gt_unit_id1) & (self.collision_events['unit_id2'] == gt_unit_id2)
         event = self.collision_events[mask]
         
-        #~ print(event['index1'])
-        #~ print(self._labels_st1)
         score_label1 = self._labels_st1[gt_unit_id1][event['index1']]
         score_label2 = self._labels_st1[gt_unit_id2][event['index2']]
         delta = event['delta_frame']
         
         return score_label1, score_label2, delta
+    
+    def get_label_count_per_collision_bins(self, gt_unit_id1, gt_unit_id2, nbins=11):
+        d = int(self.collision_lag / 1000 * self.sampling_frequency)
+        bins = np.arange(-d, d, d/10.)
+        
+        score_label1, score_label2, delta = self.get_label_for_collision(gt_unit_id1, gt_unit_id2)
+        
+        tp_count1 = np.zeros(bins.size-1)
+        fn_count1 = np.zeros(bins.size-1)
+        tp_count2 = np.zeros(bins.size-1)
+        fn_count2 = np.zeros(bins.size-1)
+        
+        for i in range(tp_count1.size):
+            l0, l1 = bins[i], bins[i+1]
+            mask = (delta>=l0) & (delta<l1)
+            
+            tp_count1[i] = np.sum(score_label1[mask] == 'TP')
+            fn_count1[i] = np.sum(score_label1[mask] == 'FN')
+            tp_count2[i] = np.sum(score_label2[mask] == 'TP')
+            fn_count2[i] = np.sum(score_label2[mask] == 'FN')
+        
+        return bins, tp_count1, fn_count1, tp_count2, fn_count2
+
         
     
