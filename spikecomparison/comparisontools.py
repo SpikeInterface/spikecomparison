@@ -707,12 +707,10 @@ def make_collision_events(sorting, delta):
 
     Parameters
     ----------
-    times1: list
-        List of spike train 1 frames
-    times2: list
-        List of spike train 2 frames
-    delta: int
-        Number of frames for considering matching events
+    sorting:
+        
+    delta: 
+        Number of frames for considering collision events
 
     Returns
     -------
@@ -722,7 +720,6 @@ def make_collision_events(sorting, delta):
                 ('delta', 'int64')]
         1d of all collision
 
-    
     """
     dtype = [
             ('index1', 'int64'), ('unit_id1', 'int64'),
@@ -737,7 +734,6 @@ def make_collision_events(sorting, delta):
         times1 = sorting.get_unit_spike_train(u1)
         
         for u2 in unit_ids[i+1:]:
-            #~ print('u1', u1, 'u2', u2)
             times2 = sorting.get_unit_spike_train(u2)
                 
             matching_event = make_matching_events(times1, times2, delta)

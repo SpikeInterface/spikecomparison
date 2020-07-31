@@ -43,13 +43,11 @@ class CollisionGTComparison(GroundTruthComparison):
         # events
         mask = (self.collision_events['unit_id1'] == gt_unit_id1) & (self.collision_events['unit_id2'] == gt_unit_id2)
         event = self.collision_events[mask]
-        print(event.size)
-        print(event)
         
         #~ print(event['index1'])
         #~ print(self._labels_st1)
         score_label1 = self._labels_st1[gt_unit_id1][event['index1']]
-        score_label2 = self._labels_st2[gt_unit_id2][event['index2']]
+        score_label2 = self._labels_st1[gt_unit_id2][event['index2']]
         delta = event['delta_frame']
         
         return score_label1, score_label2, delta
