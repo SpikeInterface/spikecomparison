@@ -640,3 +640,117 @@ def compute_performence(count_score):
     perf.loc[keep, 'miss_rate'] = fn / num_gt
 
     return perf
+
+
+def make_matching_events(times1, times2, delta):
+    """
+    Similar to count_matching_events but get index instead of counting.
+    Used for collision detection
+
+    Parameters
+    ----------
+    times1: list
+        List of spike train 1 frames
+    times2: list
+        List of spike train 2 frames
+    delta: int
+        Number of frames for considering matching events
+
+    Returns
+    -------
+    matching_event: numpy array dtype = ['index1', 'index2', 'delta']
+        1d of collision
+        
+        
+    """
+    times_concat = np.concatenate((times1, times2))
+    membership = np.concatenate((np.ones(times1.shape) * 1, np.ones(times2.shape) * 2))
+    spike_idx = np.concatenate((np.arange(times1.size, dtype='int64'), np.arange(times2.size, dtype='int64')))
+    indices = times_concat.argsort()
+    
+    times_concat_sorted = times_concat[indices]
+    membership_sorted = membership[indices]
+    spike_index_sorted = spike_idx[indices]
+    
+    diffs = times_concat_sorted[1:] - times_concat_sorted[:-1]
+    inds, = np.nonzero((diffs <= delta) & (membership_sorted[:-1] != membership_sorted[1:]))
+    
+    if len(inds) == 0:
+        return []
+    
+    dtype = [('index1', 'int64'), ('index2', 'int64'), ('delta_frame', 'int64')]
+    matching_event = np.zeros(inds.size, dtype=dtype)
+    
+    mask1 = membership_sorted[inds] == 1
+    inds1 = inds[mask1]
+    n1 = np.sum(mask1)
+    matching_event[:n1]['index1'] = spike_index_sorted[inds1]
+    matching_event[:n1]['index2'] = spike_index_sorted[inds1+1]
+    matching_event[:n1]['delta_frame'] = times_concat_sorted[inds1+1] - times_concat_sorted[inds1]
+
+    mask2 = membership_sorted[inds] == 2
+    inds2 = inds[mask2]
+    n2 = np.sum(mask2)
+    matching_event[n1:]['index1'] = spike_index_sorted[inds2+1]
+    matching_event[n1:]['index2'] = spike_index_sorted[inds2]
+    matching_event[n1:]['delta_frame'] = times_concat_sorted[inds2] - times_concat_sorted[inds2+1]
+    
+    order = np.argsort(matching_event['index1'])
+    matching_event = matching_event[order]
+    
+    return matching_event
+
+def make_collision_events(sorting, delta):
+    """
+    Similar to count_matching_events but get index instead of counting.
+    Used for collision detection
+
+    Parameters
+    ----------
+    times1: list
+        List of spike train 1 frames
+    times2: list
+        List of spike train 2 frames
+    delta: int
+        Number of frames for considering matching events
+
+    Returns
+    -------
+    collision_events: numpy array
+            dtype =  [('index1', 'int64'), ('unit_id1', 'int64'),
+                ('index2', 'int64'), ('unit_id2', 'int64'),
+                ('delta', 'int64')]
+        1d of all collision
+
+    
+    """
+    dtype = [
+            ('index1', 'int64'), ('unit_id1', 'int64'),
+            ('index2', 'int64'), ('unit_id2', 'int64'),
+            ('delta_frame', 'int64')
+        ]
+    
+    unit_ids = np.array(sorting.get_unit_ids())
+    
+    collision_events = []
+    for i, u1 in enumerate(unit_ids):
+        times1 = sorting.get_unit_spike_train(u1)
+        
+        for u2 in unit_ids[i+1:]:
+            #~ print('u1', u1, 'u2', u2)
+            times2 = sorting.get_unit_spike_train(u2)
+                
+            matching_event = make_matching_events(times1, times2, delta)
+            ce = np.zeros(matching_event.size, dtype=dtype)
+            ce['index1'] = matching_event['index1']
+            ce['unit_id1'] = u1
+            ce['index2'] = matching_event['index2']
+            ce['unit_id2'] = u2
+            ce['delta_frame'] = matching_event['delta_frame']
+            
+            collision_events.append(ce)
+    
+    collision_events = np.concatenate(collision_events)
+    
+    return collision_events
+
