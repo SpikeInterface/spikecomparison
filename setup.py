@@ -26,7 +26,7 @@ setup(
         'joblib',
         'spikeextractors',
         'spiketoolkit',
-        'spikesorters',
+        'spikesorters>=0.4.0',
     ],
     classifiers=(
         "Programming Language :: Python :: 3",
