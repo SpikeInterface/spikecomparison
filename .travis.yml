@@ -9,13 +9,14 @@ install:
 - pip install https://github.com/SpikeInterface/spikesorters/archive/master.zip
 - pip install https://github.com/SpikeInterface/spiketoolkit/archive/master.zip
 - pip install https://github.com/SpikeInterface/spikewidgets/archive/master.zip
+- pip install .
+- pip install pytest==4.3
+- pip install matplotlib==3.2.2
 - pip install herdingspikes==0.3.7
 - pip install pyqt5==5.13
 - pip install hdbscan
 - pip install tridesclous==1.6.0
-- pip install .
-- pip install pytest==4.3
-script: pytest -s
+script: python -m pytest -s
 deploy:
   provider: pypi
   twine_version: 1.12.1
