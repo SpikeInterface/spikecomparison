@@ -35,9 +35,8 @@ def _setup_comparison_study():
 def _run_study_sorters():
     study = GroundTruthStudy(study_folder)
     sorter_list = ['tridesclous', 'herdingspikes']
-    print(f"#################################"
-          f"INSTALLED SORTERS"
-          f"#################################\n{ss.installed_sorters()}")
+    print(f"#################################\nINSTALLED SORTERS\n#################################\n"
+          f"{ss.installed_sorters()}")
     study.run_sorters(sorter_list)
 
 
