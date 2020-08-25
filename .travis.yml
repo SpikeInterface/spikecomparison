@@ -4,28 +4,18 @@ os:
 - linux
 python:
 - '3.6'
-sudo: enabled
-addons:
-  apt:
-    packages:
-    - libopenmpi-dev
-    - libglib2.0-0
-    - libgl1-mesa-glx
-    - qt5-default
-    - packagekit-gtk3-module
-    - libcanberra-gtk-module
 install:
-- pip install requests
 - pip install https://github.com/SpikeInterface/spikeextractors/archive/master.zip
 - pip install https://github.com/SpikeInterface/spikesorters/archive/master.zip
 - pip install https://github.com/SpikeInterface/spiketoolkit/archive/master.zip
 - pip install https://github.com/SpikeInterface/spikewidgets/archive/master.zip
 - pip install .
+- pip install pytest==4.3
+- pip install matplotlib==3.2.2
+- pip install herdingspikes==0.3.7
 - pip install pyqt5==5.13
 - pip install hdbscan
 - pip install tridesclous==1.6.0
-- pip install herdingspikes==0.3.6
-- pip install pytest==4.3
 script: python -m pytest
 deploy:
   provider: pypi

@@ -7,6 +7,7 @@ import pytest
 
 import spikeextractors as se
 
+import spikesorters as ss
 from spikecomparison.groundtruthstudy import GroundTruthStudy
 
 study_folder = 'test_groundtruthstudy/'
@@ -34,6 +35,8 @@ def _setup_comparison_study():
 def _run_study_sorters():
     study = GroundTruthStudy(study_folder)
     sorter_list = ['tridesclous', 'herdingspikes']
+    print(f"\n#################################\nINSTALLED SORTERS\n#################################\n"
+          f"{ss.installed_sorters()}")
     study.run_sorters(sorter_list)
 
 
