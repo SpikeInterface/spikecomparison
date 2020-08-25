@@ -16,7 +16,7 @@ install:
 - pip install pyqt5==5.13
 - pip install hdbscan
 - pip install tridesclous==1.6.0
-script: python -m pytest -s
+script: python -m pytest
 deploy:
   provider: pypi
   twine_version: 1.12.1

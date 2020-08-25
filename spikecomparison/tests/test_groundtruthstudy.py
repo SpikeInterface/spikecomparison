@@ -37,7 +37,6 @@ def _run_study_sorters():
     sorter_list = ['tridesclous', 'herdingspikes']
     print(f"\n#################################\nINSTALLED SORTERS\n#################################\n"
           f"{ss.installed_sorters()}")
-    os.system("pip list")
     study.run_sorters(sorter_list)
 
 
