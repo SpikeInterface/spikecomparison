@@ -11,7 +11,7 @@ install:
 - pip install https://github.com/SpikeInterface/spikewidgets/archive/master.zip
 - pip install .
 - pip install pytest==4.3
-- pip install matplotlib==3.2.2
+#- pip install matplotlib==3.2.2
 - pip install herdingspikes==0.3.7
 - pip install pyqt5==5.13
 - pip install hdbscan
