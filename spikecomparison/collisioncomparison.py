@@ -29,12 +29,8 @@ class CollisionGTComparison(GroundTruthComparison):
         self.detect_gt_collision()
         
     def detect_gt_collision(self):
-        
         delta = int(self.collision_lag / 1000 * self.sampling_frequency)
-        
-        
         self.collision_events = make_collision_events(self.sorting1, delta)
-        print(self.collision_events.size)
     
     def get_label_for_collision(self, gt_unit_id1, gt_unit_id2):
         if gt_unit_id1 > gt_unit_id2:
