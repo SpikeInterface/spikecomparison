@@ -35,6 +35,9 @@ class CollisionGTComparison(GroundTruthComparison):
     def get_label_for_collision(self, gt_unit_id1, gt_unit_id2):
         if gt_unit_id1 > gt_unit_id2:
             gt_unit_id1, gt_unit_id2 = gt_unit_id2, gt_unit_id1
+            reverses = True
+        else:
+            reversed = False
         
         # events
         mask = (self.collision_events['unit_id1'] == gt_unit_id1) & (self.collision_events['unit_id2'] == gt_unit_id2)
@@ -43,6 +46,10 @@ class CollisionGTComparison(GroundTruthComparison):
         score_label1 = self._labels_st1[gt_unit_id1][event['index1']]
         score_label2 = self._labels_st1[gt_unit_id2][event['index2']]
         delta = event['delta_frame']
+        
+        if reversed:
+            score_label1, score_label2 = score_label2, score_label1
+            delta = -delta
         
         return score_label1, score_label2, delta
     
@@ -66,6 +73,10 @@ class CollisionGTComparison(GroundTruthComparison):
             tp_count2[i] = np.sum(score_label2[mask] == 'TP')
             fn_count2[i] = np.sum(score_label2[mask] == 'FN')
         
+        # inverse for unit_id2
+        tp_count2 = tp_count2[::-1]
+        fn_count2 = fn_count2[::-1]
+
         return bins, tp_count1, fn_count1, tp_count2, fn_count2
 
         
