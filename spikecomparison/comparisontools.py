@@ -675,10 +675,12 @@ def make_matching_events(times1, times2, delta):
     diffs = times_concat_sorted[1:] - times_concat_sorted[:-1]
     inds, = np.nonzero((diffs <= delta) & (membership_sorted[:-1] != membership_sorted[1:]))
     
-    if len(inds) == 0:
-        return []
-    
     dtype = [('index1', 'int64'), ('index2', 'int64'), ('delta_frame', 'int64')]
+    
+    if len(inds) == 0:
+        return np.array([], dtype=dtype)
+    
+    
     matching_event = np.zeros(inds.size, dtype=dtype)
     
     mask1 = membership_sorted[inds] == 1
