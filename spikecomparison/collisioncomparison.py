@@ -35,7 +35,7 @@ class CollisionGTComparison(GroundTruthComparison):
     def get_label_for_collision(self, gt_unit_id1, gt_unit_id2):
         if gt_unit_id1 > gt_unit_id2:
             gt_unit_id1, gt_unit_id2 = gt_unit_id2, gt_unit_id1
-            reverses = True
+            reversed = True
         else:
             reversed = False
         

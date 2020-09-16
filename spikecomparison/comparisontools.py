@@ -672,8 +672,7 @@ def make_matching_events(times1, times2, delta):
     membership_sorted = membership[indices]
     spike_index_sorted = spike_idx[indices]
     
-    diffs = times_concat_sorted[1:] - times_concat_sorted[:-1]
-    inds, = np.nonzero((diffs <= delta) & (membership_sorted[:-1] != membership_sorted[1:]))
+    inds, = np.nonzero((np.diff(times_concat_sorted) <= delta) & (np.diff(membership_sorted) != 0))
     
     dtype = [('index1', 'int64'), ('index2', 'int64'), ('delta_frame', 'int64')]
     
