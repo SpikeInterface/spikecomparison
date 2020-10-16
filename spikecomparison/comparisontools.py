@@ -711,7 +711,7 @@ def make_collision_events(sorting, delta):
     sorting: SortingExtractor
         The sorting extractor object for counting collision events
         
-    delta: 
+    delta: int
         Number of frames for considering collision events
 
     Returns
