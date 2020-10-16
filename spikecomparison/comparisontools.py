@@ -708,7 +708,8 @@ def make_collision_events(sorting, delta):
 
     Parameters
     ----------
-    sorting:
+    sorting: SortingExtractor
+        The sorting extractor object for counting collision events
         
     delta: 
         Number of frames for considering collision events
@@ -750,4 +751,3 @@ def make_collision_events(sorting, delta):
     collision_events = np.concatenate(collision_events)
     
     return collision_events
-
