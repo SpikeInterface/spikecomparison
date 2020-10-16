@@ -7,4 +7,6 @@ from .symmetricsortingcomparison import compare_two_sorters, SymmetricSortingCom
 from .groundtruthcomparison import compare_sorter_to_ground_truth, GroundTruthComparison
 from .multisortingcomparison import compare_multiple_sorters, MultiSortingComparison
 
+from .collisioncomparison import CollisionGTComparison
+
 from .groundtruthstudy import GroundTruthStudy

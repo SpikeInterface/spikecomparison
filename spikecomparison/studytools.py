@@ -255,11 +255,17 @@ def copy_sortings_to_npz(study_folder):
 
     for rec_name, sorter_name, output_folder in iter_output_folders(sorter_folders):
         SorterClass = sorter_dict[sorter_name]
-        sorting = SorterClass.get_result_from_folder(output_folder)
         fname = rec_name + '[#]' + sorter_name
-        se.NpzSortingExtractor.write_sorting(sorting, sorting_folders / (fname + '.npz'))
+        npz_filename = sorting_folders / (fname + '.npz')
+        try:
+            sorting = SorterClass.get_result_from_folder(output_folder)
+            se.NpzSortingExtractor.write_sorting(sorting, npz_filename)
+        except:
+            if os.path.exists(npz_filename):
+                os.remove(npz_filename)
         if os.path.exists(output_folder / 'spikeinterface_log.json'):
             shutil.copyfile(output_folder / 'spikeinterface_log.json', sorting_folders / 'run_log' / (fname + '.json'))
+
 
 
 def iter_computed_names(study_folder):
