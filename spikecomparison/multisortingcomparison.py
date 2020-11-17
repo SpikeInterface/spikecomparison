@@ -269,9 +269,11 @@ class MultiSortingComparison(BaseComparison):
 
 
 class AgreementSortingExtractor(se.SortingExtractor):
+
     def __init__(self, multisortingcomparison, min_agreement_count=1, min_agreement_count_only=False):
         se.SortingExtractor.__init__(self)
         self._msc = multisortingcomparison
+        self.is_dumpable = False
 
         if min_agreement_count_only:
             self._unit_ids = list(u for u in self._msc._new_units.keys()
