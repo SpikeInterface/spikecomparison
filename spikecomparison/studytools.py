@@ -46,11 +46,11 @@ def setup_comparison_study(study_folder, gt_dict):
     study_folder = Path(study_folder)
     assert not study_folder.is_dir(), "'study_folder' already exists. Please remove it"
 
-    study_folder.mkdir(study_folder, parents=True, exist_ok=True)
-    (study_folder / 'raw_files').mkdir(study_folder, parents=True, exist_ok=True)
-    (study_folder / 'ground_truth').mkdir(study_folder, parents=True, exist_ok=True)
-    (study_folder / 'sortings').mkdir(study_folder, parents=True, exist_ok=True)
-    (study_folder / 'sortings' / 'run_log').mkdir(study_folder, parents=True, exist_ok=True)
+    study_folder.mkdir(parents=True, exist_ok=True)
+    (study_folder / 'raw_files').mkdir(parents=True, exist_ok=True)
+    (study_folder / 'ground_truth').mkdir(parents=True, exist_ok=True)
+    (study_folder / 'sortings').mkdir(parents=True, exist_ok=True)
+    (study_folder / 'sortings' / 'run_log').mkdir(parents=True, exist_ok=True)
 
     for rec_name, (recording, sorting_gt) in gt_dict.items():
         # write recording as binary format + json + prb
