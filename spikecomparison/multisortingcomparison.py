@@ -79,8 +79,7 @@ class MultiSortingComparison(BaseComparison):
 
     def dump(self, save_folder):
         save_folder = Path(save_folder)
-        if not save_folder.is_dir():
-            os.makedirs(str(save_folder))
+        save_folder.mkdir(parents=True, exist_ok=True)
         filename = str(save_folder / 'multicomparison.gpickle')
         nx.write_gpickle(self.graph, filename)
         kwargs = {'delta_time': self.delta_time, 'sampling_frequency': self.sampling_frequency,
