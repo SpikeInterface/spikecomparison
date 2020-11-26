@@ -157,13 +157,11 @@ class GroundTruthStudy:
         perfs = self.aggregate_performance_by_units()
 
         dataframes['perf_by_units'] = perfs.reset_index()
-        # dataframes['perf_pooled_with_average'] = perfs.reset_index().groupby(['rec_name', 'sorter_name']).mean().reset_index()
         dataframes['count_units'] = self.aggregate_count_units(**karg_thresh).reset_index()
 
         if copy_into_folder:
             tables_folder = self.study_folder / 'tables'
-            if not os.path.exists(tables_folder):
-                os.makedirs(str(tables_folder))
+            tables_folder.mkdir(parents=True, exist_ok=True)
 
             for name, df in dataframes.items():
                 df.to_csv(str(tables_folder / (name + '.csv')), sep='\t', index=False)
@@ -190,11 +188,11 @@ class GroundTruthStudy:
         rec_name = self._check_rec_name(rec_name)
 
         metrics_folder = self.study_folder / 'metrics'
-        if not (os.path.exists(metrics_folder)):
-            os.makedirs(str(metrics_folder))
+        metrics_folder.mkdir(parents=True, exist_ok=True)
+
         filename = metrics_folder / ('SNR ' + rec_name + '.txt')
 
-        if os.path.exists(filename):
+        if filename.is_file():
             snr = pd.read_csv(filename, sep='\t', index_col=None)
             snr = snr.set_index('gt_unit_id')
         else:
