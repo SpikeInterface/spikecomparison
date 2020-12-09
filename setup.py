@@ -24,9 +24,9 @@ setup(
         'pandas',
         'networkx',
         'joblib',
-        'spikeextractors',
-        'spiketoolkit',
-        'spikesorters>=0.4.0',
+        'spikeextractors>=0.9.3',
+        'spiketoolkit>=0.7.2',
+        'spikesorters>=0.4.3',
     ],
     classifiers=(
         "Programming Language :: Python :: 3",
