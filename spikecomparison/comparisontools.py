@@ -608,9 +608,9 @@ def do_count_score(event_counts1, event_counts2, match_12, match_event_count):
 _perf_keys = ['accuracy', 'recall', 'precision', 'false_discovery_rate', 'miss_rate']
 
 
-def compute_performence(count_score):
+def compute_performance(count_score):
     """
-    This compte perf formula.
+    This compute perf formula.
     this trick here is that it works both on pd.Series and pd.Dataframe
     line by line.
     This it is internally used by perf by psiketrain and poll_with_sum.

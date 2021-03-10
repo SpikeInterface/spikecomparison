@@ -3,7 +3,7 @@ import numpy as np
 from .basecomparison import BaseTwoSorterComparison
 from .comparisontools import (do_score_labels, make_possible_match,
                               make_best_match, make_hungarian_match, do_confusion_matrix, do_count_score,
-                              compute_performence)
+                              compute_performance)
 
 
 class GroundTruthComparison(BaseTwoSorterComparison):
@@ -165,7 +165,7 @@ class GroundTruthComparison(BaseTwoSorterComparison):
             perf = self.count_score
 
         elif method == 'by_unit':
-            perf = compute_performence(self.count_score)
+            perf = compute_performance(self.count_score)
 
         elif method == 'pooled_with_average':
             perf = self.get_performance(method='by_unit').mean(axis=0)
