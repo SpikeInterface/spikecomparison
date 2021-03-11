@@ -4,7 +4,7 @@ from numpy.testing import assert_array_equal
 from spikecomparison.comparisontools import (do_count_event, make_match_count_matrix, make_agreement_scores,
                                              make_possible_match, make_best_match, make_hungarian_match,
                                              do_score_labels, compare_spike_trains, do_confusion_matrix, do_count_score,
-                                             compute_performence)
+                                             compute_performance)
 
 
 def make_sorting(times1, labels1, times2, labels2):
@@ -206,7 +206,7 @@ def test_do_count_score_and_perf():
     assert count_score.at[0, 'tested_id'] == 0
     assert count_score.at[1, 'tested_id'] == 5
 
-    perf = compute_performence(count_score)
+    perf = compute_performance(count_score)
     #  print(perf)
 
     assert perf.at[0, 'accuracy'] == 2 / 3
